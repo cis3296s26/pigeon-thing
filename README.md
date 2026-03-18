@@ -1,17 +1,47 @@
-# ptp_thing
+# Roost
+   ,_
+  >' )
+  ( ( \
+mrf''|\
 
-A new Flutter project.
+# Build Instructions
 
-## Getting Started
+## Prerequisites
 
-This project is a starting point for a Flutter application.
+Install the following:
 
-A few resources to get you started if this is your first Flutter project:
+* **Flutter SDK**: [https://docs.flutter.dev/get-started/install](https://docs.flutter.dev/get-started/install)
+* **Git**
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Setup
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Clone the repository:
+
+```
+git clone https://github.com/your-username/ptp_thing.git
+cd ptp_thing
+```
+
+Install dependencies:
+
+```
+flutter pub get
+```
+
+---
+
+## Run the App
+
+Start the app on a connected device or emulator:
+
+```
+flutter run
+```
+
+---
+
+## Build
+
+```
+flutter build <platform>
+```
