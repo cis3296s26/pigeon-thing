@@ -1,8 +1,4 @@
 # Roost
-   ,_
-  >' )
-  ( ( \
-mrf''|\
 
 # Build Instructions
 
