@@ -1,18 +1,32 @@
 import 'package:flutter/material.dart';
 
 class Roost extends StatelessWidget {
-  const Roost({super.key});
+  final List<String> notifications = List.generate(40, (i) => "Notification ${i + 1}: Pigeon In Roost");
+
+  Roost({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Second Page')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context); // go back
-          },
-          child: const Text('Go Back'),
+      appBar: AppBar(title: const Text('Roost')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: notifications.length,
+                itemBuilder: (context, index) {
+                  return Text(notifications[index]);
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Go Back'),
+            ),
+          ],
         ),
       ),
     );
