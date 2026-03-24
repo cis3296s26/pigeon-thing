@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "962362941256",
+    "project_id": "pigeon-firebase",
+    "storage_bucket": "pigeon-firebase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:962362941256:android:de8018673bd2b2200d9d7d",
+        "android_client_info": {
+          "package_name": "com.example.ptp_thing"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDGBEXUN-ytVMIHpw96yDdSLunnG3YueY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
