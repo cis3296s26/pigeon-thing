@@ -183,12 +183,14 @@ class _RoostState extends State<Roost> {
       appBar: AppBar(
         title: const Text('Roost'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
             Text(
               'Device ID: ${widget.deviceId}',
               style: const TextStyle(fontSize: 14),
@@ -223,6 +225,7 @@ class _RoostState extends State<Roost> {
           ],
         ),
       ),
+    )
     );
   }
 }
