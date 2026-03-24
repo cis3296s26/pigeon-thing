@@ -9,8 +9,6 @@ class Roost extends StatefulWidget {
 }
 
 class _RoostState extends State<Roost> {
-  final List<String> notifications =
-      List.generate(40, (i) => "Notification ${i + 1}: Pigeon In Roost");
 
   String? loadedMessage;
   bool isLoading = false;
@@ -66,17 +64,6 @@ class _RoostState extends State<Roost> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Expanded(
-              child: ListView.builder(
-                itemCount: notifications.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Text(notifications[index]),
-                  );
-                },
-              ),
-            ),
             const SizedBox(height: 12),
             Text(
               loadedMessage ?? 'No message loaded yet.',
