@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/message_service.dart';
+import 'services/roost_service.dart';
 import 'models/message.dart';
 
 class CreatePigeon extends StatefulWidget {
@@ -12,6 +13,7 @@ class CreatePigeon extends StatefulWidget {
 class _CreatePigeonState extends State<CreatePigeon> {
   final TextEditingController _messageController = TextEditingController();
   final MessageService _messageService = MessageService();
+  final RoostService _roostService = RoostService.getInstance();
   bool _isSending = false;
 
   int _headIndex = 0;
@@ -37,12 +39,15 @@ class _CreatePigeonState extends State<CreatePigeon> {
     });
 
     try {
+      // get the roost ID from local storage
+      final roostId = await _roostService.getRoostId();
+
       final message = Message.create(
         body: _torsoIndex,
         head: _headIndex,
         legs: _legsIndex,
         message: messageText,
-        originRoostId: '',
+        originRoostId: roostId,
       );
 
       await _messageService.saveMessage(message);
@@ -51,6 +56,8 @@ class _CreatePigeonState extends State<CreatePigeon> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pigeon released into the world!')),
       );
+
+      // it would be cool to have a little animation play or something
 
       // clear
       _messageController.clear();
