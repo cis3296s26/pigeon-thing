@@ -41,3 +41,14 @@ flutter run
 ```
 flutter build <platform>
 ```
+
+# Installation Instructions
+
+## Download and Run
+
+Go to "releases" and download the latest release
+
+Unzip the file and run "ptp_thing.exe"
+
+
+
