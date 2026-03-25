@@ -1,5 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'services/message_service.dart';
+import 'services/roost_service.dart';
+import 'models/message.dart';
 
 class CreatePigeon extends StatefulWidget {
   const CreatePigeon({super.key});
@@ -10,6 +12,8 @@ class CreatePigeon extends StatefulWidget {
 
 class _CreatePigeonState extends State<CreatePigeon> {
   final TextEditingController _messageController = TextEditingController();
+  final MessageService _messageService = MessageService();
+  final RoostService _roostService = RoostService.getInstance();
   bool _isSending = false;
 
   int _headIndex = 0;
@@ -20,102 +24,94 @@ class _CreatePigeonState extends State<CreatePigeon> {
   final List<String> torsos = ['TORSO1', 'TORSO2', 'TORSO3'];
   final List<String> legs = ['LEGS1', 'LEGS2', 'LEGS3'];
 
-  void _createPigeon(){
-    final text = _messageController.text.trim();
-
-    setState(() {
-      _isSending = true;
-    });
-
-    _messageController.clear();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pigeon Created')),
-    );
-    
-    setState(() {
-      _isSending = false;
-    });
-  }
-
   Future<void> _sendMessage() async {
-    final text = _messageController.text.trim();
+    final messageText = _messageController.text.trim();
 
-    if (text.isEmpty) return;
+    if (messageText.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter a message')));
+      return;
+    }
 
     setState(() {
       _isSending = true;
     });
-
-    print('1: send pressed');
-    print('2: before firestore add');
 
     try {
-      await FirebaseFirestore.instance
-          .collection('messages')
-          .add({
-            'text': text,
-            'createdAt': FieldValue.serverTimestamp(),
-          })
-          .timeout(const Duration(seconds: 10));
+      // get the roost ID from local storage
+      final roostId = await _roostService.getRoostId();
 
-      print('3: firestore add completed');
+      final message = Message.create(
+        body: _torsoIndex,
+        head: _headIndex,
+        legs: _legsIndex,
+        message: messageText,
+        originRoostId: roostId,
+      );
+
+      await _messageService.saveMessage(message);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Message uploaded.')),
+        const SnackBar(content: Text('Pigeon released into the world!')),
       );
+
+      // it would be cool to have a little animation play or something
+
+      // clear
+      _messageController.clear();
+      setState(() {
+        _headIndex = 0;
+        _torsoIndex = 0;
+        _legsIndex = 0;
+      });
     } catch (e) {
-      print('ERROR: $e');
-
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to send pigeon: $e')));
     } finally {
-      print('4: finally block hit');
-
       if (mounted) {
         setState(() {
           _isSending = false;
         });
       }
+    }
   }
-}
 
-Widget piecesSelector({
-  required String label,
-  required List<String> items,
-  required int currentIndex,
-  required Function(int) onChanged,
-}) {
-  return Column(children: [
-    Text(label, style: const TextStyle(fontSize: 18)),
-    Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+  Widget piecesSelector({
+    required String label,
+    required List<String> items,
+    required int currentIndex,
+    required Function(int) onChanged,
+  }) {
+    return Column(
       children: [
-        IconButton(icon: const Icon(Icons.arrow_left), onPressed: () {
-          int newIndex = 
-          (currentIndex - 1 + items.length) % items.length;
-          onChanged(newIndex);
-          },
-        ),
-        Image.asset(items[currentIndex],
-        width: 100,
-        height: 100,
-        ),
-        IconButton(
-          icon: const Icon(Icons.arrow_right),
-          onPressed:(){
-            int newIndex = (currentIndex + 1) % items.length;
-            onChanged(newIndex);
-          },
+        Text(label, style: const TextStyle(fontSize: 18)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_left),
+              onPressed: () {
+                int newIndex = (currentIndex - 1 + items.length) % items.length;
+                onChanged(newIndex);
+              },
+            ),
+            Image.asset(items[currentIndex], width: 100, height: 100),
+            IconButton(
+              icon: const Icon(Icons.arrow_right),
+              onPressed: () {
+                int newIndex = (currentIndex + 1) % items.length;
+                onChanged(newIndex);
+              },
+            ),
+          ],
         ),
       ],
-    )
-  ],
-  );
-}
+    );
+  }
 
   @override
   void dispose() {
@@ -134,9 +130,8 @@ Widget piecesSelector({
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              const Text('Preview', style: TextStyle(fontSize:20)),
+              const Text('Preview', style: TextStyle(fontSize: 20)),
               const SizedBox(height: 10),
-              
               SizedBox(
                 height: 220,
                 child: Stack(
@@ -148,45 +143,39 @@ Widget piecesSelector({
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
               piecesSelector(
                 label: 'Head',
                 items: heads,
                 currentIndex: _headIndex,
                 onChanged: (i) => setState(() => _headIndex = i),
               ),
-
               piecesSelector(
                 label: 'Torso',
                 items: torsos,
                 currentIndex: _torsoIndex,
                 onChanged: (i) => setState(() => _torsoIndex = i),
               ),
-
               piecesSelector(
                 label: 'Legs',
                 items: legs,
                 currentIndex: _legsIndex,
                 onChanged: (i) => setState(() => _legsIndex = i),
               ),
-
               const SizedBox(height: 20),
-
               TextField(
                 controller: _messageController,
                 maxLines: 4,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  labelText: 'Enter your pigeon message',
-                  hintText: 'Type a message to upload to Firebase',
+                  labelText: 'Message for your pigeon',
+                  hintText: 'What should your pigeon say?',
                 ),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _isSending ? null : _sendMessage,
-                child: Text(_isSending ? 'Sending...' : 'Send'),
+                child: Text(_isSending ? 'Releasing...' : 'Release Pigeon'),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
