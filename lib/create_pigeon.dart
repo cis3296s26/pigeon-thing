@@ -16,9 +16,9 @@ class _CreatePigeonState extends State<CreatePigeon> {
   int _torsoIndex = 0;
   int _legsIndex = 0;
 
-  final List<String> heads = ['HEAD1', 'HEAD2', 'HEAD3'];
-  final List<String> torsos = ['TORSO1', 'TORSO2', 'TORSO3'];
-  final List<String> legs = ['LEGS1', 'LEGS2', 'LEGS3'];
+  final List<String> heads = ['assets/heads/Pigeonhead.jpeg', 'HEAD2', 'HEAD3'];
+  final List<String> torsos = ['assets/Torsos/PigeonWing.jpeg', 'TORSO2', 'TORSO3'];
+  final List<String> legs = ['assets/Legs/PigeonLegs.jpeg', 'LEGS2', 'LEGS3'];
 
   void _createPigeon(){
     final text = _messageController.text.trim();
