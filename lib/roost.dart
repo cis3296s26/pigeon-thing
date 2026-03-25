@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'services/message_service.dart';
+import 'services/roost_service.dart';
 
 class Roost extends StatefulWidget {
   
-  final String deviceId;
+  String deviceId;
 
-  const Roost({
+  Roost({
     super.key,
     required this.deviceId,
   });
@@ -27,6 +29,7 @@ class _RoostState extends State<Roost> {
   String? loadedOriginRoostId;
   bool isLoading = false;
 
+  final RoostService _roostService = RoostService.getInstance();
   
   Future<void> _loadRandomEligibleMessage() async {
     setState(() {
@@ -39,6 +42,8 @@ class _RoostState extends State<Roost> {
       loadedHops = null;
       loadedOriginRoostId = null;
     });
+
+    widget.deviceId = await _roostService.getRoostId();
 
     print('R1: load pressed');
     print('R2: current deviceId = ${widget.deviceId}');
@@ -91,18 +96,18 @@ class _RoostState extends State<Roost> {
         // Skip if this source -> destination route already exists
         final travelLogSnapshot = await FirebaseFirestore.instance
             .collection('travel_logs')
-            .where('source_roost_id', isEqualTo: originRoostId)
+            .where('message_id', isEqualTo: doc.id)
             .where('destination_roost_id', isEqualTo: widget.deviceId)
             .limit(1)
             .get()
             .timeout(const Duration(seconds: 10));
 
-        final bool routeAlreadyExists = travelLogSnapshot.docs.isNotEmpty;
+        final bool messageAlreadySeenByThisDevice = travelLogSnapshot.docs.isNotEmpty;
 
-        print('R8: routeAlreadyExists = $routeAlreadyExists');
+        print('R8: messageAlreadySeenByThisDevice = $messageAlreadySeenByThisDevice');
 
-        if (routeAlreadyExists) {
-          print('R9: skipped - route already logged');
+        if (messageAlreadySeenByThisDevice) {
+          print('R9: skipped - this device already saw this message');
           continue;
         }
 
