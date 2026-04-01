@@ -437,6 +437,36 @@ class _RoostState extends State<Roost> {
                   textAlign: TextAlign.center,
                 ),
               ),
+              if (loadedMessageId != null)
+                Column(
+                  children: [
+                    const SizedBox(height: 10),
+
+                    ElevatedButton(
+                      onPressed: _shooPigeon,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey,
+                      ),
+                      child: const Text(
+                        'Shoo',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    ElevatedButton(
+                      onPressed: _reportContent,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                      ),
+                      child: const Text(
+                        'Report Content',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: isLoading ? null : _loadRandomEligibleMessage,
