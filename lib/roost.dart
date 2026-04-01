@@ -23,6 +23,11 @@ class _RoostState extends State<Roost> {
   String? loadedOriginRoostId;
   String? loadedMessageId;
   bool isLoading = false;
+  
+
+  final List<String> heads = ['assets/heads/Head10.png','assets/heads/Head20.png','assets/heads/Head30.png','assets/heads/Head40.png'];
+  final List<String> torsos = ['assets/Torsos/Body10.png','assets/Torsos/Body20.png'];
+  final List<String> legs = ['assets/Legs/Feet10.png', 'assets/Legs/Feet20.png', 'assets/Legs/Feet30.png'];
 
   final RoostService _roostService = RoostService.getInstance();
   final MessageService _messageService = MessageService();
@@ -291,13 +296,17 @@ class _RoostState extends State<Roost> {
 
   @override
   Widget build(BuildContext context) {
+    int? headIdx = loadedHead != null ? int.tryParse(loadedHead!)?.clamp(0, heads.length - 1) : null;
+    int? bodyIdx = loadedBody != null ? int.tryParse(loadedBody!)?.clamp(0, torsos.length - 1) : null;
+    int? legsIdx = loadedLegs != null ? int.tryParse(loadedLegs!)?.clamp(0, legs.length - 1) : null;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Roost')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -306,71 +315,129 @@ class _RoostState extends State<Roost> {
                 style: const TextStyle(fontSize: 14),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
-              Text(
-                loadedMessage ?? 'No message loaded yet.',
-                style: const TextStyle(fontSize: 16),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // HARM
+                  if (loadedMessageId != null)
+                    GestureDetector(
+                      onTap: _harmPigeon,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Harm', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 6),
+                          Image.asset('Backgrounds/Rocks.png', width: 60),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(width: 10),
+
+                  Flexible(
+                    child: 
+                    SizedBox(
+                      width: 220,
+                      height: 240,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        clipBehavior: Clip.none,
+                        children: [
+                          if (bodyIdx == null)
+                            Center(
+                              child: Image.asset(
+                                'Backgrounds/question_mark.png',
+                                height: 100,
+                              ),
+                            )
+                          else ...[
+                            Positioned(
+                              bottom: 9,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Image.asset(
+                                  torsos[bodyIdx],
+                                  height: 134,
+                                ),
+                              ),
+                            ),
+
+                            if (headIdx != null)
+                              Positioned(
+                                top: 6,
+                                left: 82.4,
+                                right: 0,
+                                child: Center(
+                                  child: Image.asset(
+                                    heads[headIdx],
+                                    height: 102,
+                                  ),
+                                ),
+                              ),
+                            if (legsIdx != null)
+                              Positioned(
+                                bottom: 0.5,
+                                left: 0,
+                                right: .6,
+                                child: Center(
+                                  child: Image.asset(
+                                    legs[legsIdx],
+                                    height: 50,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  if (loadedMessageId != null)
+                    GestureDetector(
+                      onTap: _feedPigeon,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Feed',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Image.asset(
+                            'Backgrounds/Feed.png',
+                            width: 60,
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Origin Roost ID: ${loadedOriginRoostId ?? '-'}\n'
-                'Head: ${loadedHead ?? '-'}\n'
-                'Body: ${loadedBody ?? '-'}\n'
-                'Legs: ${loadedLegs ?? '-'}\n'
-                'Health: ${loadedHealth ?? '-'}\n'
-                'Hops: ${loadedHops ?? '-'}',
-                textAlign: TextAlign.center,
+
+              const SizedBox(height: 20),
+
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  loadedMessage ?? 'No message loaded yet.',
+                  style: const TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
               ),
               const SizedBox(height: 20),
-              if (loadedMessageId != null)
-                Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          onPressed: _feedPigeon,
-                          child: const Text('Feed'),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: _harmPigeon,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                          ),
-                          child: const Text(
-                            'Harm',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: _shooPigeon,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey,
-                          ),
-                          child: const Text(
-                            'Shoo',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: _reportContent,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                          ),
-                          child: const Text(
-                            'Report Content',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
               ElevatedButton(
                 onPressed: isLoading ? null : _loadRandomEligibleMessage,
                 child: Text(isLoading ? 'Loading...' : 'Load Message'),
