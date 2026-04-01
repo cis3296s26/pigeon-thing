@@ -294,7 +294,7 @@ class _RoostState extends State<Roost> {
                       children: [
                         ElevatedButton(
                           onPressed: _feedPigeon,
-                          child: const Text('🍽️ Feed'),
+                          child: const Text('Feed'),
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton(
@@ -303,7 +303,7 @@ class _RoostState extends State<Roost> {
                             backgroundColor: Colors.red,
                           ),
                           child: const Text(
-                            '⚔️ Harm',
+                            'Harm',
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
@@ -314,7 +314,7 @@ class _RoostState extends State<Roost> {
                             backgroundColor: Colors.grey,
                           ),
                           child: const Text(
-                            '🚪 Shoo',
+                            'Shoo',
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
