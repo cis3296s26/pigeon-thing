@@ -23,11 +23,22 @@ class _RoostState extends State<Roost> {
   String? loadedOriginRoostId;
   String? loadedMessageId;
   bool isLoading = false;
-  
 
-  final List<String> heads = ['assets/heads/Head10.png','assets/heads/Head20.png','assets/heads/Head30.png','assets/heads/Head40.png'];
-  final List<String> torsos = ['assets/Torsos/Body10.png','assets/Torsos/Body20.png'];
-  final List<String> legs = ['assets/Legs/Feet10.png', 'assets/Legs/Feet20.png', 'assets/Legs/Feet30.png'];
+  final List<String> heads = [
+    'assets/heads/Head10.png',
+    'assets/heads/Head20.png',
+    'assets/heads/Head30.png',
+    'assets/heads/Head40.png',
+  ];
+  final List<String> torsos = [
+    'assets/Torsos/Body10.png',
+    'assets/Torsos/Body20.png',
+  ];
+  final List<String> legs = [
+    'assets/Legs/Feet10.png',
+    'assets/Legs/Feet20.png',
+    'assets/Legs/Feet30.png',
+  ];
 
   final RoostService _roostService = RoostService.getInstance();
   final MessageService _messageService = MessageService();
@@ -216,6 +227,8 @@ class _RoostState extends State<Roost> {
         context,
       ).showSnackBar(SnackBar(content: Text('Error feeding pigeon: $e')));
     }
+
+    await _shooPigeon();
   }
 
   Future<void> _harmPigeon() async {
@@ -251,6 +264,8 @@ class _RoostState extends State<Roost> {
         context,
       ).showSnackBar(SnackBar(content: Text('Error harming pigeon: $e')));
     }
+
+    await _shooPigeon();
   }
 
   Future<void> _shooPigeon() async {
@@ -288,17 +303,23 @@ class _RoostState extends State<Roost> {
       await _loadRandomEligibleMessage();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error reporting message: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error reporting message: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    int? headIdx = loadedHead != null ? int.tryParse(loadedHead!)?.clamp(0, heads.length - 1) : null;
-    int? bodyIdx = loadedBody != null ? int.tryParse(loadedBody!)?.clamp(0, torsos.length - 1) : null;
-    int? legsIdx = loadedLegs != null ? int.tryParse(loadedLegs!)?.clamp(0, legs.length - 1) : null;
+    int? headIdx = loadedHead != null
+        ? int.tryParse(loadedHead!)?.clamp(0, heads.length - 1)
+        : null;
+    int? bodyIdx = loadedBody != null
+        ? int.tryParse(loadedBody!)?.clamp(0, torsos.length - 1)
+        : null;
+    int? legsIdx = loadedLegs != null
+        ? int.tryParse(loadedLegs!)?.clamp(0, legs.length - 1)
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Roost')),
@@ -327,7 +348,10 @@ class _RoostState extends State<Roost> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('Harm', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Harm',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(height: 6),
                           Image.asset('Backgrounds/Rocks.png', width: 60),
                         ],
@@ -337,8 +361,7 @@ class _RoostState extends State<Roost> {
                   const SizedBox(width: 10),
 
                   Flexible(
-                    child: 
-                    SizedBox(
+                    child: SizedBox(
                       width: 220,
                       height: 240,
                       child: Stack(
@@ -383,10 +406,7 @@ class _RoostState extends State<Roost> {
                                 left: 0,
                                 right: .6,
                                 child: Center(
-                                  child: Image.asset(
-                                    legs[legsIdx],
-                                    height: 50,
-                                  ),
+                                  child: Image.asset(legs[legsIdx], height: 50),
                                 ),
                               ),
                           ],
@@ -405,15 +425,10 @@ class _RoostState extends State<Roost> {
                         children: [
                           const Text(
                             'Feed',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
-                          Image.asset(
-                            'Backgrounds/Feed.png',
-                            width: 60,
-                          ),
+                          Image.asset('Backgrounds/Feed.png', width: 60),
                         ],
                       ),
                     ),
@@ -425,10 +440,7 @@ class _RoostState extends State<Roost> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.black,
-                    width: 2,
-                  ),
+                  border: Border.all(color: Colors.black, width: 2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
