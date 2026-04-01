@@ -252,6 +252,43 @@ class _RoostState extends State<Roost> {
     await _loadRandomEligibleMessage();
   }
 
+  Future<void> _reportContent() async {
+    if (loadedMessageId == null) return;
+
+    try {
+      final roostId = await _roostService.getRoostId();
+
+      await _messageService.reportMessage(
+        messageId: loadedMessageId!,
+        reportedByRoostId: roostId,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Message reported for review.')),
+      );
+
+      setState(() {
+        loadedMessage = 'Message reported and moved for review.';
+        loadedHead = null;
+        loadedBody = null;
+        loadedLegs = null;
+        loadedHealth = null;
+        loadedHops = null;
+        loadedOriginRoostId = null;
+        loadedMessageId = null;
+      });
+
+      await _loadRandomEligibleMessage();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error reporting message: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -315,6 +352,17 @@ class _RoostState extends State<Roost> {
                           ),
                           child: const Text(
                             'Shoo',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _reportContent,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                          ),
+                          child: const Text(
+                            'Report Content',
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
