@@ -20,9 +20,9 @@ class _CreatePigeonState extends State<CreatePigeon> {
   int _torsoIndex = 0;
   int _legsIndex = 0;
 
-  final List<String> heads = ['HEAD1', 'HEAD2', 'HEAD3'];
-  final List<String> torsos = ['TORSO1', 'TORSO2', 'TORSO3'];
-  final List<String> legs = ['LEGS1', 'LEGS2', 'LEGS3'];
+  final List<String> heads = ['assets/heads/Head10.png','assets/heads/Head20.png','assets/heads/Head30.png','assets/heads/Head40.png'];
+  final List<String> torsos = ['assets/Torsos/Body10.png','assets/Torsos/Body20.png'];
+  final List<String> legs = ['assets/Legs/Feet10.png', 'assets/Legs/Feet20.png', 'assets/Legs/Feet30.png'];
 
   Future<void> _sendMessage() async {
     final messageText = _messageController.text.trim();
@@ -99,7 +99,10 @@ class _CreatePigeonState extends State<CreatePigeon> {
                 onChanged(newIndex);
               },
             ),
-            Image.asset(items[currentIndex], width: 100, height: 100),
+            Image.asset(items[currentIndex], width: 100, height: 100, errorBuilder: (context, error, stackTrace) {
+            return const Icon(Icons.error);
+            },
+            ),
             IconButton(
               icon: const Icon(Icons.arrow_right),
               onPressed: () {
@@ -133,17 +136,47 @@ class _CreatePigeonState extends State<CreatePigeon> {
               const Text('Preview', style: TextStyle(fontSize: 20)),
               const SizedBox(height: 10),
               SizedBox(
-                height: 220,
-                child: Stack(
-                  alignment: Alignment.center,
+                height: 325,
+                child: 
+                Stack(
                   children: [
-                    Image.asset(legs[_legsIndex], height: 200),
-                    Image.asset(torsos[_torsoIndex], height: 150),
-                    Image.asset(legs[_legsIndex], height: 100),
+                    // Torso (center anchor)
+                    Center(
+                      child: Image.asset(
+                        torsos[_torsoIndex],
+                        height: 134,
+                      ),
+                    ),
+
+                    // Head (move up)
+                    Positioned(
+                      top: 5,
+                      left: 82.4,
+                      right: 0,
+                      child: Center(
+                        child: Image.asset(
+                          heads[_headIndex],
+                          height: 102,
+                        ),
+                      ),
+                    ),
+
+                    // Legs (move down)
+                    Positioned(
+                      bottom: 86.3,
+                      left: 0,
+                      right: .6,
+                      child: Center(
+                        child: Image.asset(
+                          legs[_legsIndex],
+                          height: 50,
+                        ),
+                      ),
+                    ),
                   ],
-                ),
+                )
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
               piecesSelector(
                 label: 'Head',
                 items: heads,

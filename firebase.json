@@ -1,1 +1,16 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"pigeon-firebase","appId":"1:962362941256:android:de8018673bd2b2200d9d7d","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"pigeon-firebase","appId":"1:962362941256:ios:fdcdf22b0deb92fd0d9d7d","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"pigeon-firebase","appId":"1:962362941256:ios:fdcdf22b0deb92fd0d9d7d","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"pigeon-firebase","configurations":{"android":"1:962362941256:android:de8018673bd2b2200d9d7d","ios":"1:962362941256:ios:fdcdf22b0deb92fd0d9d7d","macos":"1:962362941256:ios:fdcdf22b0deb92fd0d9d7d","web":"1:962362941256:web:b90a06d2daedb9dc0d9d7d","windows":"1:962362941256:web:5a54bd1b770282570d9d7d"}}}}}}
+{
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
