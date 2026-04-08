@@ -379,7 +379,7 @@ class _RoostState extends State<Roost> {
                       ),
 
                     Positioned(
-                      left: 340,
+                      left: 460,
                       child: Row(
                         children: [
                           // REPORT
@@ -418,7 +418,7 @@ class _RoostState extends State<Roost> {
                     ),
                     if (loadedMessageId != null)
                     Positioned(
-                      right: 400,
+                      right: 520,
                       child: GestureDetector(
                         onTap: _feedPigeon,
                         child: Column(
