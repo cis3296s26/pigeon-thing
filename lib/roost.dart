@@ -359,68 +359,81 @@ class _RoostState extends State<Roost> {
               ),
               const SizedBox(height: 20),
               
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // HARM
-                  if (loadedMessageId != null)
-                    GestureDetector(
-                      onTap: _harmPigeon,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Harm',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          Image.asset('assets/Backgrounds/Rocks.png', width: 60),
-                        ],
+              SizedBox(
+                width: double.infinity,
+                height: 240,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (bodyIdx == null)
+                      Image.asset(
+                        'assets/Backgrounds/question_mark.png',
+                        height: 100,
+                      )
+                    else
+                      PigeonWidget(
+                        head: headIdx ?? 0,
+                        body: bodyIdx ?? 0,
+                        legs: legsIdx ?? 0,
+                        scale: 1.0,
                       ),
-                    ),
 
-                  const SizedBox(width: 10),
-
-                  Flexible(
-                    child: 
-                    SizedBox(
-                      width: 220,
-                      height: 240,
-                      child: bodyIdx == null
-                          ? Center(
-                              child: Image.asset(
-                                'assets/Backgrounds/question_mark.png',
-                                height: 100,
+                    Positioned(
+                      left: 340,
+                      child: Row(
+                        children: [
+                          // REPORT
+                          if (loadedMessageId != null)
+                            GestureDetector(
+                              onTap: _reportContent,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('Report',
+                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 6),
+                                  Icon(Icons.flag, size: 40, color: Colors.orange),
+                                ],
                               ),
-                            )
-                          : PigeonWidget(
-                              head: headIdx ?? 0,
-                              body: bodyIdx ?? 0,
-                              legs: legsIdx ?? 0,
-                              scale: 1.0, 
                             ),
-                    ),
-                  ),
 
-                  const SizedBox(width: 10),
+                          const SizedBox(width: 30),
 
-                  if (loadedMessageId != null)
-                    GestureDetector(
-                      onTap: _feedPigeon,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Feed',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          Image.asset('assets/Backgrounds/Feed.png', width: 60),
+                          // HARM
+                          if (loadedMessageId != null)
+                            GestureDetector(
+                              onTap: _harmPigeon,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('Harm',
+                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 6),
+                                  Image.asset('assets/Backgrounds/Rocks.png', width: 60),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                ],
+                    if (loadedMessageId != null)
+                    Positioned(
+                      right: 400,
+                      child: GestureDetector(
+                        onTap: _feedPigeon,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('Feed',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 6),
+                            Image.asset('assets/Backgrounds/Feed.png', width: 60),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(width: 10),
@@ -460,19 +473,6 @@ class _RoostState extends State<Roost> {
                       ),
                       child: const Text(
                         'Shoo',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    ElevatedButton(
-                      onPressed: _reportContent,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                      ),
-                      child: const Text(
-                        'Report Content',
                         style: TextStyle(color: Colors.white),
                       ),
                     ),

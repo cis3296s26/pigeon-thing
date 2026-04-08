@@ -170,6 +170,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       final msg = docs[index];
 
                       return Container(
+                        height: 80,
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -187,14 +188,32 @@ class _MyHomePageState extends State<MyHomePage> {
 
                             const SizedBox(width: 10),
 
-                            // 📄 Message + hops
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "${msg['hops'] ?? 0}",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Text(
+                                  "Hops",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(width: 10),
+
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(msg['message'] ?? ''),
-                                  const SizedBox(height: 4),
-                                ],
+                              child: Text(
+                                msg['message'] ?? '',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
+                                style: const TextStyle(fontSize: 14),
                               ),
                             ),
                           ],
