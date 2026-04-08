@@ -1,10 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:flutter/material.dart';
 import 'roost.dart';
 import 'create_pigeon.dart';
 import 'services/roost_service.dart';
+import 'widgets/pigeon.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:async';
 
@@ -111,9 +113,41 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
-  final String device_id = "1234567890";
+  String? device_id;
+
+  final List<String> heads = [
+    'assets/heads/Head10.png',
+    'assets/heads/Head20.png',
+    'assets/heads/Head30.png',
+    'assets/heads/Head40.png'
+  ];
+
+  final List<String> torsos = [
+    'assets/Torsos/Body10.png',
+    'assets/Torsos/Body20.png'
+  ];
+
+  final List<String> legs = [
+    'assets/Legs/Feet10.png',
+    'assets/Legs/Feet20.png',
+    'assets/Legs/Feet30.png'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    loadDeviceId();
+  }
+
+  Future<void> loadDeviceId() async {
+    final id = await RoostService.getInstance().getRoostId();
+    setState(() {
+      device_id = id;
+    });
+  }
 
   void _incrementCounter() {
     setState(() {
@@ -128,6 +162,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (device_id == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
     //
@@ -150,13 +190,98 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            const Text('Message Tracker'),
 
             const SizedBox(height: 20),
+
+            Container(
+              width: 320,
+              height: 300,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('messages')
+                    .where('origin_roost_id', isEqualTo: device_id)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text("No messages yet"));
+                  }
+
+                  final docs = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final msg = docs[index];
+
+                      return Container(
+                        height: 80,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            PigeonWidget(
+                              head: msg['head'] ?? 0,
+                              body: msg['body'] ?? 0,
+                              legs: msg['legs'] ?? 0,
+                              scale: 0.2,
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "${msg['hops'] ?? 0}",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Text(
+                                  "Hops",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            Expanded(
+                              child: Text(
+                                msg['message'] ?? '',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+
+
+            const SizedBox(height: 30),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -165,7 +290,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => Roost(deviceId: device_id),
+                        builder: (context) => Roost(deviceId: device_id!),
                       ),
                     );
                   },
