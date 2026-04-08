@@ -10,7 +10,11 @@ class MessageService {
   // saves it to firestore
   Future<String> saveMessage(Message message) async {
     try {
-      final docRef = await _db.collection(_collection).add(message.toJson());
+      final data = message.toJson();
+      
+      data['created_at'] = FieldValue.serverTimestamp();
+
+      final docRef = await _db.collection(_collection).add(data);
       return docRef.id;
     } catch (e) {
       throw Exception('Failed to save message: $e');

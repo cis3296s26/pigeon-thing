@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'services/message_service.dart';
 import 'services/roost_service.dart';
+import 'widgets/pigeon.dart';
 
 class Roost extends StatefulWidget {
   String deviceId;
@@ -39,6 +40,14 @@ class _RoostState extends State<Roost> {
     'assets/Legs/Feet20.png',
     'assets/Legs/Feet30.png',
   ];
+
+  final List<String> hearts = [
+    'assets/Hearts/39.png', 'assets/Hearts/38.png', 'assets/Hearts/37.png', 'assets/Hearts/36.png', 'assets/Hearts/35.png',
+    'assets/Hearts/34.png', 'assets/Hearts/33.png', 'assets/Hearts/32.png', 'assets/Hearts/31.png', 'assets/Hearts/30.png',
+    'assets/Hearts/29.png', 'assets/Hearts/28.png', 'assets/Hearts/27.png', 'assets/Hearts/26.png', 'assets/Hearts/25.png',
+    'assets/Hearts/24.png', 'assets/Hearts/23.png', 'assets/Hearts/22.png', 'assets/Hearts/21.png', 'assets/Hearts/20.png',
+    'assets/Hearts/19.png', 'assets/Hearts/18.png', 'assets/Hearts/17.png', 'assets/Hearts/16.png', 'assets/Hearts/15.png',
+    'assets/Hearts/14.png', 'assets/Hearts/13.png', 'assets/Hearts/12.png', 'assets/Hearts/11.png', 'assets/Hearts/10.png'];
 
   final RoostService _roostService = RoostService.getInstance();
   final MessageService _messageService = MessageService();
@@ -206,7 +215,9 @@ class _RoostState extends State<Roost> {
       return;
 
     setState(() {
-      loadedHealth = loadedHealth! + 2;
+      loadedHealth = loadedHealth! + 3;
+      loadedHops = loadedHops! + 1;
+
     });
 
     try {
@@ -228,14 +239,15 @@ class _RoostState extends State<Roost> {
       ).showSnackBar(SnackBar(content: Text('Error feeding pigeon: $e')));
     }
 
-    await _shooPigeon();
+    await _loadRandomEligibleMessage();
   }
 
   Future<void> _harmPigeon() async {
     if (loadedMessageId == null || loadedHealth == null) return;
 
     setState(() {
-      loadedHealth = (loadedHealth! - 3).clamp(0, 100);
+      loadedHealth = (loadedHealth! - 6).clamp(0, 30);
+      loadedHops = loadedHops! + 1;
     });
 
     try {
@@ -265,10 +277,16 @@ class _RoostState extends State<Roost> {
       ).showSnackBar(SnackBar(content: Text('Error harming pigeon: $e')));
     }
 
-    await _shooPigeon();
+    await _loadRandomEligibleMessage();
   }
 
   Future<void> _shooPigeon() async {
+
+    setState(() {
+      loadedHealth = (loadedHealth! - 3).clamp(0, 30);
+      loadedHops = loadedHops! + 1;
+    });
+
     await _loadRandomEligibleMessage();
   }
 
@@ -320,6 +338,9 @@ class _RoostState extends State<Roost> {
     int? legsIdx = loadedLegs != null
         ? int.tryParse(loadedLegs!)?.clamp(0, legs.length - 1)
         : null;
+    int? healthIdx = loadedHealth != null
+        ? (loadedHealth! - 1).clamp(0, hearts.length - 1)
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Roost')),
@@ -332,11 +353,12 @@ class _RoostState extends State<Roost> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                'Device ID: ${widget.deviceId}',
-                style: const TextStyle(fontSize: 14),
+                'Hops: ${loadedHops}',
+                style: const TextStyle(fontSize: 20),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
+              
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -353,7 +375,7 @@ class _RoostState extends State<Roost> {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
-                          Image.asset('Backgrounds/Rocks.png', width: 60),
+                          Image.asset('assets/Backgrounds/Rocks.png', width: 60),
                         ],
                       ),
                     ),
@@ -361,57 +383,23 @@ class _RoostState extends State<Roost> {
                   const SizedBox(width: 10),
 
                   Flexible(
-                    child: SizedBox(
+                    child: 
+                    SizedBox(
                       width: 220,
                       height: 240,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        clipBehavior: Clip.none,
-                        children: [
-                          if (bodyIdx == null)
-                            Center(
+                      child: bodyIdx == null
+                          ? Center(
                               child: Image.asset(
-                                'Backgrounds/question_mark.png',
+                                'assets/Backgrounds/question_mark.png',
                                 height: 100,
                               ),
                             )
-                          else ...[
-                            Positioned(
-                              bottom: 9,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: Image.asset(
-                                  torsos[bodyIdx],
-                                  height: 134,
-                                ),
-                              ),
+                          : PigeonWidget(
+                              head: headIdx ?? 0,
+                              body: bodyIdx ?? 0,
+                              legs: legsIdx ?? 0,
+                              scale: 1.0, 
                             ),
-
-                            if (headIdx != null)
-                              Positioned(
-                                top: 6,
-                                left: 82.4,
-                                right: 0,
-                                child: Center(
-                                  child: Image.asset(
-                                    heads[headIdx],
-                                    height: 102,
-                                  ),
-                                ),
-                              ),
-                            if (legsIdx != null)
-                              Positioned(
-                                bottom: 0.5,
-                                left: 0,
-                                right: .6,
-                                child: Center(
-                                  child: Image.asset(legs[legsIdx], height: 50),
-                                ),
-                              ),
-                          ],
-                        ],
-                      ),
                     ),
                   ),
 
@@ -428,12 +416,23 @@ class _RoostState extends State<Roost> {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
-                          Image.asset('Backgrounds/Feed.png', width: 60),
+                          Image.asset('assets/Backgrounds/Feed.png', width: 60),
                         ],
                       ),
                     ),
                 ],
               ),
+
+              const SizedBox(width: 10),
+
+                  if (loadedHealth != null && healthIdx != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Image.asset(
+                        hearts[healthIdx],
+                        width: 200,
+                      ),
+                    ),
 
               const SizedBox(height: 20),
 
