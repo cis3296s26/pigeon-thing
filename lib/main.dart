@@ -7,6 +7,11 @@ import 'roost.dart';
 import 'create_pigeon.dart';
 import 'services/roost_service.dart';
 import 'widgets/pigeon.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:async';
+
+final FlutterLocalNotificationsPlugin notificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 /*void main() {
   runApp(const MyApp());
@@ -15,12 +20,61 @@ import 'widgets/pigeon.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  // Initialize RoostService singleton
   await RoostService.getInstance().init();
 
   print('Firebase initialized - Debug');
+
+  // PLATFORM-SPECIFIC notification permissions
+  const AndroidInitializationSettings androidSettings =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const DarwinInitializationSettings iosMacSettings =
+      DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+  );
+
+  const InitializationSettings settings = InitializationSettings(
+    android: androidSettings,
+    iOS: iosMacSettings,
+    macOS: iosMacSettings,
+  );
+
+  await notificationsPlugin.initialize(
+    settings: settings,
+  );
+
+  // Start repeating notification every 30 seconds
+  Timer.periodic(const Duration(seconds: 10), (timer) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'pigeon_channel',
+      'Pigeon Alerts',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const DarwinNotificationDetails iosMacDetails =
+        DarwinNotificationDetails();
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosMacDetails,
+      macOS: iosMacDetails,
+    );
+
+    await notificationsPlugin.show(
+      id: 0,
+      title: 'Time to grab a pigeon! 🐦',
+      body: 'A new pigeon is ready in your roost.',
+      notificationDetails: details,
+    );
+  });
 
   runApp(const MyApp());
 }
