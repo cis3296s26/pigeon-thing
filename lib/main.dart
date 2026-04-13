@@ -49,34 +49,31 @@ Future<void> main() async {
     settings: settings,
   );
 
-  // Start repeating notification every 30 seconds
-  Timer.periodic(const Duration(seconds: 10), (timer) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'pigeon_channel',
-      'Pigeon Alerts',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
+  await notificationsPlugin
+    .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+    ?.requestNotificationsPermission();
 
-    const DarwinNotificationDetails iosMacDetails =
-        DarwinNotificationDetails();
-
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosMacDetails,
-      macOS: iosMacDetails,
-    );
-
-    await notificationsPlugin.show(
-      id: 0,
-      title: 'Time to grab a pigeon! 🐦',
-      body: 'A new pigeon is ready in your roost.',
-      notificationDetails: details,
-    );
-  });
+  await notificationsPlugin.periodicallyShow(
+    id: 0,
+    title: 'Time to grab a pigeon! 🐦',
+    body: 'A new pigeon is ready in your roost.',
+    repeatInterval: RepeatInterval.hourly,
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'pigeon_channel',
+        'Pigeon Alerts',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(),
+      macOS: DarwinNotificationDetails(),
+    ),
+    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+  );
 
   runApp(const MyApp());
+
 }
 
 class MyApp extends StatelessWidget {
