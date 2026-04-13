@@ -24,6 +24,13 @@ class _RoostState extends State<Roost> {
   String? loadedOriginRoostId;
   String? loadedMessageId;
   bool isLoading = false;
+  int? _minutesUntilNextRequest;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRandomEligibleMessage();
+  }
 
   final List<String> heads = [
     'assets/heads/Head10.png',
@@ -42,17 +49,64 @@ class _RoostState extends State<Roost> {
   ];
 
   final List<String> hearts = [
-    'assets/Hearts/39.png', 'assets/Hearts/38.png', 'assets/Hearts/37.png', 'assets/Hearts/36.png', 'assets/Hearts/35.png',
-    'assets/Hearts/34.png', 'assets/Hearts/33.png', 'assets/Hearts/32.png', 'assets/Hearts/31.png', 'assets/Hearts/30.png',
-    'assets/Hearts/29.png', 'assets/Hearts/28.png', 'assets/Hearts/27.png', 'assets/Hearts/26.png', 'assets/Hearts/25.png',
-    'assets/Hearts/24.png', 'assets/Hearts/23.png', 'assets/Hearts/22.png', 'assets/Hearts/21.png', 'assets/Hearts/20.png',
-    'assets/Hearts/19.png', 'assets/Hearts/18.png', 'assets/Hearts/17.png', 'assets/Hearts/16.png', 'assets/Hearts/15.png',
-    'assets/Hearts/14.png', 'assets/Hearts/13.png', 'assets/Hearts/12.png', 'assets/Hearts/11.png', 'assets/Hearts/10.png'];
+    'assets/Hearts/39.png',
+    'assets/Hearts/38.png',
+    'assets/Hearts/37.png',
+    'assets/Hearts/36.png',
+    'assets/Hearts/35.png',
+    'assets/Hearts/34.png',
+    'assets/Hearts/33.png',
+    'assets/Hearts/32.png',
+    'assets/Hearts/31.png',
+    'assets/Hearts/30.png',
+    'assets/Hearts/29.png',
+    'assets/Hearts/28.png',
+    'assets/Hearts/27.png',
+    'assets/Hearts/26.png',
+    'assets/Hearts/25.png',
+    'assets/Hearts/24.png',
+    'assets/Hearts/23.png',
+    'assets/Hearts/22.png',
+    'assets/Hearts/21.png',
+    'assets/Hearts/20.png',
+    'assets/Hearts/19.png',
+    'assets/Hearts/18.png',
+    'assets/Hearts/17.png',
+    'assets/Hearts/16.png',
+    'assets/Hearts/15.png',
+    'assets/Hearts/14.png',
+    'assets/Hearts/13.png',
+    'assets/Hearts/12.png',
+    'assets/Hearts/11.png',
+    'assets/Hearts/10.png',
+  ];
 
   final RoostService _roostService = RoostService.getInstance();
   final MessageService _messageService = MessageService();
 
   Future<void> _loadRandomEligibleMessage() async {
+    // Check rate limit
+    final canRequest = await _roostService.canRequestNewPigeon();
+    if (!canRequest) {
+      // Clear current pigeon but show ratelimit message
+      if (mounted) {
+        setState(() {
+          loadedMessage = null;
+          loadedHead = null;
+          loadedBody = null;
+          loadedLegs = null;
+          loadedHealth = null;
+          loadedHops = null;
+          loadedOriginRoostId = null;
+          loadedMessageId = null;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No pigeons in roost.')));
+      }
+      return;
+    }
+
     setState(() {
       isLoading = true;
       loadedMessage = null;
@@ -185,6 +239,9 @@ class _RoostState extends State<Roost> {
           })
           .timeout(const Duration(seconds: 10));
 
+      // Record that a pigeon was requested
+      await _roostService.recordPigeonRequest();
+
       print('R11: travel log written for ${selectedDoc.id}');
     } catch (e) {
       print('ROOST ERROR: $e');
@@ -217,7 +274,6 @@ class _RoostState extends State<Roost> {
     setState(() {
       loadedHealth = loadedHealth! + 3;
       loadedHops = loadedHops! + 1;
-
     });
 
     try {
@@ -269,6 +325,8 @@ class _RoostState extends State<Roost> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pigeon harmed! It lost health.')),
         );
+
+        await _loadRandomEligibleMessage();
       }
     } catch (e) {
       if (!mounted) return;
@@ -276,12 +334,9 @@ class _RoostState extends State<Roost> {
         context,
       ).showSnackBar(SnackBar(content: Text('Error harming pigeon: $e')));
     }
-
-    await _loadRandomEligibleMessage();
   }
 
   Future<void> _shooPigeon() async {
-
     setState(() {
       loadedHealth = (loadedHealth! - 3).clamp(0, 30);
       loadedHops = loadedHops! + 1;
@@ -358,7 +413,7 @@ class _RoostState extends State<Roost> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
-              
+
               SizedBox(
                 width: double.infinity,
                 height: 240,
@@ -366,10 +421,7 @@ class _RoostState extends State<Roost> {
                   alignment: Alignment.center,
                   children: [
                     if (bodyIdx == null)
-                      Image.asset(
-                        'assets/Backgrounds/question_mark.png',
-                        height: 100,
-                      )
+                      Image.asset('assets/misc/nest.png', height: 240)
                     else
                       PigeonWidget(
                         head: headIdx ?? 0,
@@ -389,10 +441,18 @@ class _RoostState extends State<Roost> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('Report',
-                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const Text(
+                                    'Report',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                   const SizedBox(height: 6),
-                                  Icon(Icons.flag, size: 40, color: Colors.orange),
+                                  Icon(
+                                    Icons.flag,
+                                    size: 40,
+                                    color: Colors.orange,
+                                  ),
                                 ],
                               ),
                             ),
@@ -406,10 +466,17 @@ class _RoostState extends State<Roost> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('Harm',
-                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const Text(
+                                    'Harm',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                   const SizedBox(height: 6),
-                                  Image.asset('assets/Backgrounds/Rocks.png', width: 60),
+                                  Image.asset(
+                                    'assets/Backgrounds/Rocks.png',
+                                    width: 60,
+                                  ),
                                 ],
                               ),
                             ),
@@ -417,35 +484,37 @@ class _RoostState extends State<Roost> {
                       ),
                     ),
                     if (loadedMessageId != null)
-                    Positioned(
-                      right: 400,
-                      child: GestureDetector(
-                        onTap: _feedPigeon,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('Feed',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 6),
-                            Image.asset('assets/Backgrounds/Feed.png', width: 60),
-                          ],
+                      Positioned(
+                        right: 400,
+                        child: GestureDetector(
+                          onTap: _feedPigeon,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Feed',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 6),
+                              Image.asset(
+                                'assets/Backgrounds/Feed.png',
+                                width: 60,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
 
               const SizedBox(width: 10),
 
-                  if (loadedHealth != null && healthIdx != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Image.asset(
-                        hearts[healthIdx],
-                        width: 200,
-                      ),
-                    ),
+              if (loadedHealth != null && healthIdx != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Image.asset(hearts[healthIdx], width: 200),
+                ),
 
               const SizedBox(height: 20),
 
@@ -456,7 +525,7 @@ class _RoostState extends State<Roost> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  loadedMessage ?? 'No message loaded yet.',
+                  loadedMessage ?? 'No pigeons currently in roost.',
                   style: const TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
@@ -478,11 +547,6 @@ class _RoostState extends State<Roost> {
                     ),
                   ],
                 ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: isLoading ? null : _loadRandomEligibleMessage,
-                child: Text(isLoading ? 'Loading...' : 'Load Message'),
-              ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
