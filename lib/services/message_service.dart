@@ -4,8 +4,8 @@ import '../models/message.dart';
 class MessageService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   static const String _collection = 'messages';
-  static const String _reportedCollection =
-    'messages_pending_review_reported_collection';
+  static const String _reportedCollection = 'messages_pending_review_reported_collection';
+  static const String _trackedCollection = 'tracked_pigeons';
 
   // saves it to firestore
   Future<String> saveMessage(Message message) async {
@@ -78,4 +78,63 @@ class MessageService {
       throw Exception('Failed to report message: $e');
     }
   }
+
+
+  Future<int> getTrackedCount(String trackedByRoostId) async {
+    try {
+      final snapshot = await _db
+          .collection(_trackedCollection)
+          .where('tracked_by_roost_id', isEqualTo: trackedByRoostId)
+          .get();
+
+      return snapshot.docs.length;
+    } catch (e) {
+      throw Exception('Failed to get tracked pigeon count: $e');
+    }
+  }
+
+  Future<void> trackMessage({
+    required String messageId,
+    required String trackedByRoostId,
+  }) async {
+    try {
+      final trackedRef = _db
+          .collection(_trackedCollection)
+          .doc('${trackedByRoostId}_$messageId');
+
+      final existing = await trackedRef.get();
+      if (existing.exists) {
+        return;
+      }
+
+      final trackedCount = await getTrackedCount(trackedByRoostId);
+      if (trackedCount >= 3) {
+        throw Exception('You can only track up to 3 pigeons at a time.');
+      }
+
+      await trackedRef.set({
+        'message_id': messageId,
+        'tracked_by_roost_id': trackedByRoostId,
+        'tracked_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to track pigeon: $e');
+    }
+  }
+
+  Future<void> untrackMessage({
+    required String messageId,
+    required String trackedByRoostId,
+  }) async {
+    try {
+      await _db
+          .collection(_trackedCollection)
+          .doc('${trackedByRoostId}_$messageId')
+          .delete();
+    } catch (e) {
+      throw Exception('Failed to untrack pigeon: $e');
+    }
+  }
+
+
 }

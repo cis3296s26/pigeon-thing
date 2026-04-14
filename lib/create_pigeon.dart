@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'services/message_service.dart';
 import 'services/roost_service.dart';
 import 'models/message.dart';
+import 'package:confetti/confetti.dart';
 
 class CreatePigeon extends StatefulWidget {
   const CreatePigeon({super.key});
@@ -15,14 +16,25 @@ class _CreatePigeonState extends State<CreatePigeon> {
   final MessageService _messageService = MessageService();
   final RoostService _roostService = RoostService.getInstance();
   bool _isSending = false;
+  bool _trackThisPigeon = false;
 
   int _headIndex = 0;
   int _torsoIndex = 0;
   int _legsIndex = 0;
 
+  late ConfettiController _confettiController;
+
   final List<String> heads = ['assets/heads/Head10.png','assets/heads/Head20.png','assets/heads/Head30.png','assets/heads/Head40.png'];
   final List<String> torsos = ['assets/Torsos/Body10.png','assets/Torsos/Body20.png'];
   final List<String> legs = ['assets/Legs/Feet10.png', 'assets/Legs/Feet20.png', 'assets/Legs/Feet30.png'];
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 1),
+    );
+  }
 
   Future<void> _sendMessage() async {
     final messageText = _messageController.text.trim();
@@ -42,6 +54,22 @@ class _CreatePigeonState extends State<CreatePigeon> {
       // get the roost ID from local storage
       final roostId = await _roostService.getRoostId();
 
+      if (_trackThisPigeon) {
+        final trackedCount = await _messageService.getTrackedCount(roostId);
+        if (trackedCount >= 3) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You already have 3 tracked pigeons. Untrack one on the home page first.'),
+            ),
+          );
+          setState(() {
+            _isSending = false;
+          });
+          return;
+        }
+      }
+
       final message = Message.create(
         body: _torsoIndex,
         head: _headIndex,
@@ -50,9 +78,19 @@ class _CreatePigeonState extends State<CreatePigeon> {
         originRoostId: roostId,
       );
 
-      await _messageService.saveMessage(message);
+      final messageId = await _messageService.saveMessage(message);
+      if (_trackThisPigeon) {
+        await _messageService.trackMessage(
+          messageId: messageId,
+          trackedByRoostId: roostId,
+        );
+      }
+
 
       if (!mounted) return;
+
+      _confettiController.play();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pigeon released into the world!')),
       );
@@ -65,6 +103,7 @@ class _CreatePigeonState extends State<CreatePigeon> {
         _headIndex = 0;
         _torsoIndex = 0;
         _legsIndex = 0;
+        _trackThisPigeon = false;
       });
     } catch (e) {
       if (!mounted) return;
@@ -119,6 +158,7 @@ class _CreatePigeonState extends State<CreatePigeon> {
   @override
   void dispose() {
     _messageController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -128,98 +168,124 @@ class _CreatePigeonState extends State<CreatePigeon> {
       appBar: AppBar(
         title: const Text('Create and Customize Your Pigeon Here!'),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              const Text('Preview', style: TextStyle(fontSize: 20)),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 325,
-                child: 
-                Stack(
-                  children: [
-                    // Torso (center anchor)
-                    Center(
-                      child: Image.asset(
-                        torsos[_torsoIndex],
-                        height: 134,
-                      ),
-                    ),
-
-                    // Head (move up)
-                    Positioned(
-                      top: 5,
-                      left: 82.4,
-                      right: 0,
-                      child: Center(
-                        child: Image.asset(
-                          heads[_headIndex],
-                          height: 102,
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  const Text('Preview', style: TextStyle(fontSize: 20)),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 325,
+                    child: Stack(
+                      children: [
+                        // Torso (center anchor)
+                        Center(
+                          child: Image.asset(
+                            torsos[_torsoIndex],
+                            height: 134,
+                          ),
                         ),
-                      ),
-                    ),
 
-                    // Legs (move down)
-                    Positioned(
-                      bottom: 86.3,
-                      left: 0,
-                      right: .6,
-                      child: Center(
-                        child: Image.asset(
-                          legs[_legsIndex],
-                          height: 50,
+                        // Head (move up)
+                        Positioned(
+                          top: 5,
+                          left: 82.4,
+                          right: 0,
+                          child: Center(
+                            child: Image.asset(
+                              heads[_headIndex],
+                              height: 102,
+                            ),
+                          ),
                         ),
-                      ),
+
+                        // Legs (move down)
+                        Positioned(
+                          bottom: 86.3,
+                          left: 0,
+                          right: .6,
+                          child: Center(
+                            child: Image.asset(
+                              legs[_legsIndex],
+                              height: 50,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                )
+                  ),
+                  const SizedBox(height: 15),
+                  piecesSelector(
+                    label: 'Head',
+                    items: heads,
+                    currentIndex: _headIndex,
+                    onChanged: (i) => setState(() => _headIndex = i),
+                  ),
+                  piecesSelector(
+                    label: 'Torso',
+                    items: torsos,
+                    currentIndex: _torsoIndex,
+                    onChanged: (i) => setState(() => _torsoIndex = i),
+                  ),
+                  piecesSelector(
+                    label: 'Legs',
+                    items: legs,
+                    currentIndex: _legsIndex,
+                    onChanged: (i) => setState(() => _legsIndex = i),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _messageController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Message for your pigeon',
+                      hintText: 'What should your pigeon say?',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: const Text('Track this pigeon'),
+                    subtitle: const Text('Tracked pigeons appear on the home page'),
+                    value: _trackThisPigeon,
+                    onChanged: (value) {
+                      setState(() {
+                        _trackThisPigeon = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _isSending ? null : _sendMessage,
+                    child: Text(_isSending ? 'Releasing...' : 'Release Pigeon'),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Go Back'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 15),
-              piecesSelector(
-                label: 'Head',
-                items: heads,
-                currentIndex: _headIndex,
-                onChanged: (i) => setState(() => _headIndex = i),
-              ),
-              piecesSelector(
-                label: 'Torso',
-                items: torsos,
-                currentIndex: _torsoIndex,
-                onChanged: (i) => setState(() => _torsoIndex = i),
-              ),
-              piecesSelector(
-                label: 'Legs',
-                items: legs,
-                currentIndex: _legsIndex,
-                onChanged: (i) => setState(() => _legsIndex = i),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _messageController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Message for your pigeon',
-                  hintText: 'What should your pigeon say?',
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _isSending ? null : _sendMessage,
-                child: Text(_isSending ? 'Releasing...' : 'Release Pigeon'),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('Go Back'),
-              ),
-            ],
+            ),
           ),
-        ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirection: 1.5708,
+              emissionFrequency: 0.05,
+              numberOfParticles: 25,
+              maxBlastForce: 20,
+              minBlastForce: 8,
+              gravity: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }
