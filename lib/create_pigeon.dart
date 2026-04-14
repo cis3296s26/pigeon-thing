@@ -15,6 +15,7 @@ class _CreatePigeonState extends State<CreatePigeon> {
   final MessageService _messageService = MessageService();
   final RoostService _roostService = RoostService.getInstance();
   bool _isSending = false;
+  bool _trackThisPigeon = false;
 
   int _headIndex = 0;
   int _torsoIndex = 0;
@@ -42,6 +43,22 @@ class _CreatePigeonState extends State<CreatePigeon> {
       // get the roost ID from local storage
       final roostId = await _roostService.getRoostId();
 
+      if (_trackThisPigeon) {
+        final trackedCount = await _messageService.getTrackedCount(roostId);
+        if (trackedCount >= 3) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You already have 3 tracked pigeons. Untrack one on the home page first.'),
+            ),
+          );
+          setState(() {
+            _isSending = false;
+          });
+          return;
+        }
+      }
+
       final message = Message.create(
         body: _torsoIndex,
         head: _headIndex,
@@ -50,7 +67,14 @@ class _CreatePigeonState extends State<CreatePigeon> {
         originRoostId: roostId,
       );
 
-      await _messageService.saveMessage(message);
+      final messageId = await _messageService.saveMessage(message);
+      if (_trackThisPigeon) {
+        await _messageService.trackMessage(
+          messageId: messageId,
+          trackedByRoostId: roostId,
+        );
+      }
+
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -65,6 +89,7 @@ class _CreatePigeonState extends State<CreatePigeon> {
         _headIndex = 0;
         _torsoIndex = 0;
         _legsIndex = 0;
+        _trackThisPigeon = false;
       });
     } catch (e) {
       if (!mounted) return;
@@ -204,6 +229,17 @@ class _CreatePigeonState extends State<CreatePigeon> {
                   labelText: 'Message for your pigeon',
                   hintText: 'What should your pigeon say?',
                 ),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                title: const Text('Track this pigeon'),
+                subtitle: const Text('Tracked pigeons appear on the home page'),
+                value: _trackThisPigeon,
+                onChanged: (value) {
+                  setState(() {
+                    _trackThisPigeon = value;
+                  });
+                },
               ),
               const SizedBox(height: 16),
               ElevatedButton(

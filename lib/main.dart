@@ -190,7 +190,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Message Tracker'),
+            const Text('Tracked Pigeons'),
 
             const SizedBox(height: 20),
 
@@ -204,23 +204,24 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('messages')
-                    .where('origin_roost_id', isEqualTo: device_id)
-                    .snapshots(),
+                  .collection('tracked_pigeons')
+                  .where('tracked_by_roost_id', isEqualTo: device_id)
+                  .limit(3)
+                  .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text("No messages yet"));
+                    return const Center(child: Text("No Tracked Pigeons Yet"));
                   }
 
                   final docs = snapshot.data!.docs;
 
                   return ListView.builder(
                     itemCount: docs.length,
-                    itemBuilder: (context, index) {
+                    /*itemBuilder: (context, index) {
                       final msg = docs[index];
 
                       return Container(
@@ -272,6 +273,112 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                           ],
                         ),
+                      );
+                    },*/
+                    itemBuilder: (context, index) {
+                      final trackedDoc = docs[index];
+                      final String messageId = trackedDoc['message_id'];
+
+                      return StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('messages')
+                            .doc(messageId)
+                            .snapshots(),
+                        builder: (context, messageSnapshot) {
+                          if (messageSnapshot.connectionState == ConnectionState.waiting) {
+                            return const SizedBox.shrink();
+                          }
+
+                          if (!messageSnapshot.hasData || !messageSnapshot.data!.exists) {
+                            return Container(
+                              height: 80,
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Tracked pigeon no longer exists.',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.gps_fixed, color: Colors.red),
+                                    onPressed: () async {
+                                      await FirebaseFirestore.instance
+                                          .collection('tracked_pigeons')
+                                          .doc('${device_id}_$messageId')
+                                          .delete();
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          final data = messageSnapshot.data!.data() as Map<String, dynamic>;
+
+                          return Container(
+                            height: 80,
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                PigeonWidget(
+                                  head: data['head'] ?? 0,
+                                  body: data['body'] ?? 0,
+                                  legs: data['legs'] ?? 0,
+                                  scale: 0.2,
+                                ),
+                                const SizedBox(width: 10),
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "${data['hops'] ?? 0}",
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const Text(
+                                      "Hops",
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    data['message'] ?? '',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    softWrap: true,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.gps_fixed, color: Colors.green),
+                                  tooltip: 'Untrack',
+                                  onPressed: () async {
+                                    await FirebaseFirestore.instance
+                                        .collection('tracked_pigeons')
+                                        .doc('${device_id}_$messageId')
+                                        .delete();
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       );
                     },
                   );
