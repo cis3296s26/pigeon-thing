@@ -94,44 +94,15 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   String? device_id;
-
-  final List<String> heads = [
-    'assets/heads/Head10.png',
-    'assets/heads/Head20.png',
-    'assets/heads/Head30.png',
-    'assets/heads/Head40.png'
-  ];
-
-  final List<String> torsos = [
-    'assets/Torsos/Body10.png',
-    'assets/Torsos/Body20.png'
-  ];
-
-  final List<String> legs = [
-    'assets/Legs/Feet10.png',
-    'assets/Legs/Feet20.png',
-    'assets/Legs/Feet30.png'
-  ];
+  String selectedView = 'tracked';
 
   @override
   void initState() {
@@ -146,15 +117,26 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  Stream<QuerySnapshot> getPigeonStream() {
+    if (selectedView == 'tracked') {
+      return FirebaseFirestore.instance
+          .collection('tracked_pigeons')
+          .where('tracked_by_roost_id', isEqualTo: device_id)
+          .limit(10)
+          .snapshots();
+    } else if (selectedView == 'yours') {
+      return FirebaseFirestore.instance
+          .collection('messages')
+          .where('origin_roost_id', isEqualTo: device_id)
+          .limit(10)
+          .snapshots();
+    } else {
+      return FirebaseFirestore.instance
+          .collection('messages')
+          .orderBy('hops', descending: true)
+          .limit(10)
+          .snapshots();
+    }
   }
 
   @override
@@ -165,224 +147,42 @@ class _MyHomePageState extends State<MyHomePage> {
       );
     }
 
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Tracked Pigeons'),
 
+            const Text('Pigeons'),
             const SizedBox(height: 20),
 
             Container(
               width: 320,
-              height: 300,
-              padding: const EdgeInsets.all(12),
+              height: 360,
               decoration: BoxDecoration(
                 color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                  .collection('tracked_pigeons')
-                  .where('tracked_by_roost_id', isEqualTo: device_id)
-                  .limit(3)
-                  .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+              child: Column(
+                children: [
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text("No Tracked Pigeons Yet"));
-                  }
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: buildPigeonList(),
+                    ),
+                  ),
 
-                  final docs = snapshot.data!.docs;
+                  const Divider(height: 1),
 
-                  return ListView.builder(
-                    itemCount: docs.length,
-                    /*itemBuilder: (context, index) {
-                      final msg = docs[index];
-
-                      return Container(
-                        height: 80,
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            PigeonWidget(
-                              head: msg['head'] ?? 0,
-                              body: msg['body'] ?? 0,
-                              legs: msg['legs'] ?? 0,
-                              scale: 0.2,
-                            ),
-
-                            const SizedBox(width: 10),
-
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "${msg['hops'] ?? 0}",
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const Text(
-                                  "Hops",
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(width: 10),
-
-                            Expanded(
-                              child: Text(
-                                msg['message'] ?? '',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                softWrap: true,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },*/
-                    itemBuilder: (context, index) {
-                      final trackedDoc = docs[index];
-                      final String messageId = trackedDoc['message_id'];
-
-                      return StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('messages')
-                            .doc(messageId)
-                            .snapshots(),
-                        builder: (context, messageSnapshot) {
-                          if (messageSnapshot.connectionState == ConnectionState.waiting) {
-                            return const SizedBox.shrink();
-                          }
-
-                          if (!messageSnapshot.hasData || !messageSnapshot.data!.exists) {
-                            return Container(
-                              height: 80,
-                              margin: const EdgeInsets.symmetric(vertical: 6),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Expanded(
-                                    child: Text(
-                                      'Tracked pigeon no longer exists.',
-                                      style: TextStyle(fontSize: 14),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.gps_fixed, color: Colors.red),
-                                    onPressed: () async {
-                                      await FirebaseFirestore.instance
-                                          .collection('tracked_pigeons')
-                                          .doc('${device_id}_$messageId')
-                                          .delete();
-                                    },
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          final data = messageSnapshot.data!.data() as Map<String, dynamic>;
-
-                          return Container(
-                            height: 80,
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: [
-                                PigeonWidget(
-                                  head: data['head'] ?? 0,
-                                  body: data['body'] ?? 0,
-                                  legs: data['legs'] ?? 0,
-                                  scale: 0.2,
-                                ),
-                                const SizedBox(width: 10),
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "${data['hops'] ?? 0}",
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const Text(
-                                      "Hops",
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    data['message'] ?? '',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    softWrap: true,
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.gps_fixed, color: Colors.green),
-                                  tooltip: 'Untrack',
-                                  onPressed: () async {
-                                    await FirebaseFirestore.instance
-                                        .collection('tracked_pigeons')
-                                        .doc('${device_id}_$messageId')
-                                        .delete();
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+                  buildBottomTabs(),
+                ],
               ),
             ),
-
 
             const SizedBox(height: 30),
 
@@ -417,10 +217,143 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    );
+  }
+
+  Widget buildPigeonList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: getPigeonStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No Pigeons"));
+        }
+
+        final docs = snapshot.data!.docs;
+
+        return ListView.builder(
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            if (selectedView == 'tracked') {
+              final trackedDoc = docs[index];
+              final String messageId = trackedDoc['message_id'];
+              return buildTrackedItem(messageId);
+            } else {
+              final data = docs[index].data() as Map<String, dynamic>;
+              return buildPigeonTile(data);
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Widget buildTrackedItem(String messageId) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('messages')
+          .doc(messageId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        return buildPigeonTile(data);
+      },
+    );
+  }
+
+  Widget buildPigeonTile(Map<String, dynamic> data) {
+    return Container(
+      height: 80,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          PigeonWidget(
+            head: data['head'] ?? 0,
+            body: data['body'] ?? 0,
+            legs: data['legs'] ?? 0,
+            scale: 0.2,
+          ),
+          const SizedBox(width: 10),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "${data['hops'] ?? 0}",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Text("Hops"),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              data['message'] ?? '',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildBottomTabs() {
+    return Row(
+      children: [
+        _segment("Top", "top"),
+        Container(width: 1, height: 40, color: Colors.grey[400]),
+        _segment("Yours", "yours"),
+        Container(width: 1, height: 40, color: Colors.grey[400]),
+        _segment("Tracked", "tracked"),
+      ],
+    );
+  }
+
+  Widget _segment(String label, String value) {
+    final isSelected = selectedView == value;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            selectedView = value;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.deepPurple : Colors.transparent,
+            borderRadius: BorderRadius.only(
+              bottomLeft:
+                  value == "top" ? const Radius.circular(16) : Radius.zero,
+              bottomRight:
+                  value == "tracked" ? const Radius.circular(16) : Radius.zero,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
