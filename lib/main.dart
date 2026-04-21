@@ -7,6 +7,7 @@ import 'roost.dart';
 import 'create_pigeon.dart';
 import 'services/roost_service.dart';
 import 'widgets/pigeon.dart';
+import 'widgets/recolor_image.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:async';
 
@@ -102,7 +103,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String? device_id;
-  String selectedView = 'tracked';
+  String selectedView = 'top';
 
   @override
   void initState() {
@@ -115,6 +116,20 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       device_id = id;
     });
+  }
+
+  Future<void> _untrackPigeon(String messageId) async {
+    final roostId = await RoostService.getInstance().getRoostId();
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('tracked_pigeons')
+        .where('tracked_by_roost_id', isEqualTo: roostId)
+        .where('message_id', isEqualTo: messageId)
+        .get();
+
+    for (var doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
   }
 
   Stream<QuerySnapshot> getPigeonStream() {
@@ -148,77 +163,115 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        centerTitle: true,
+        toolbarHeight: 90,
 
-            const Text('Pigeons'),
-            const SizedBox(height: 20),
-
-            Container(
-              width: 320,
-              height: 360,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(16),
+        shape: const Border(
+          bottom: BorderSide(
+            color: Colors.black,
+            width: 0.5,
+          ),
+        ),
+        
+        titleSpacing: 0,
+        title: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Container(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              alignment: Alignment.center,
+              child: Image.asset(
+                'assets/logo.png',
+                height: 120,
               ),
+            ),
+          ),
+        ),
+      ),
+      body: Container(
+        color: Colors.white,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Container(
+              color: Theme.of(context).scaffoldBackgroundColor,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 60),
 
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: buildPigeonList(),
+                  const Text(
+                    'Pigeon Messages',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
 
-                  const Divider(height: 1),
+                  const SizedBox(height: 50),
 
-                  buildBottomTabs(),
+                  Container(
+                    width: 340,
+                    height: 420,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: buildPigeonList(),
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        buildBottomTabs(),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Roost(deviceId: device_id!),
+                            ),
+                          );
+                        },
+                        child: const Text('Go to Roost'),
+                      ),
+                      const SizedBox(width: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CreatePigeon(),
+                            ),
+                          );
+                        },
+                        child: const Text('Create Pigeon!'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 30),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => Roost(deviceId: device_id!),
-                      ),
-                    );
-                  },
-                  child: const Text('Go to Roost'),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CreatePigeon(),
-                      ),
-                    );
-                  },
-                  child: const Text('Create Pigeon!'),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
-    );
-  }
+  );
+}
 
   Widget buildPigeonList() {
     return StreamBuilder<QuerySnapshot>(
@@ -258,17 +311,27 @@ class _MyHomePageState extends State<MyHomePage> {
           .doc(messageId)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const SizedBox.shrink();
+        if (!snapshot.hasData) {
+          return const SizedBox(
+            height: 80,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
+
+        if (!snapshot.data!.exists) {
+          return const SizedBox(
+            height: 80,
+            child: Center(child: Text("Missing pigeon")),
+          );
         }
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
-        return buildPigeonTile(data);
+        return buildPigeonTile(data, isTracked: true, messageId: messageId,);
       },
     );
   }
 
-  Widget buildPigeonTile(Map<String, dynamic> data) {
+  Widget buildPigeonTile(Map<String, dynamic> data, {bool isTracked = false, String? messageId}) {
     return Container(
       height: 80,
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -283,22 +346,25 @@ class _MyHomePageState extends State<MyHomePage> {
             head: data['head'] ?? 0,
             body: data['body'] ?? 0,
             legs: data['legs'] ?? 0,
+            color: data['color'] ?? 0xFF808080,
             scale: 0.2,
           ),
+
           const SizedBox(width: 10),
+
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 "${data['hops'] ?? 0}",
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const Text("Hops"),
             ],
           ),
+
           const SizedBox(width: 10),
+
           Expanded(
             child: Text(
               data['message'] ?? '',
@@ -306,8 +372,27 @@ class _MyHomePageState extends State<MyHomePage> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+
+          if (isTracked && messageId != null)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  _untrackPigeon(messageId);
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: const Icon(
+                    Icons.visibility,
+                    color: Colors.blue,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
         ],
-      ),
+      )
     );
   }
 
@@ -316,7 +401,7 @@ class _MyHomePageState extends State<MyHomePage> {
       children: [
         _segment("Top", "top"),
         Container(width: 1, height: 40, color: Colors.grey[400]),
-        _segment("Yours", "yours"),
+        _segment("My Pigeons", "yours"),
         Container(width: 1, height: 40, color: Colors.grey[400]),
         _segment("Tracked", "tracked"),
       ],

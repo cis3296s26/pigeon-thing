@@ -4,6 +4,7 @@ import 'dart:math';
 import 'services/message_service.dart';
 import 'services/roost_service.dart';
 import 'widgets/pigeon.dart';
+import 'widgets/app_layout.dart';
 
 class Roost extends StatefulWidget {
   String deviceId;
@@ -23,8 +24,10 @@ class _RoostState extends State<Roost> {
   int? loadedHops;
   String? loadedOriginRoostId;
   String? loadedMessageId;
+  int? loadedColor;
+
   bool isLoading = false;
-  int? _minutesUntilNextRequest;
+  bool isTracked = false;
 
   @override
   void initState() {
@@ -38,10 +41,12 @@ class _RoostState extends State<Roost> {
     'assets/heads/Head30.png',
     'assets/heads/Head40.png',
   ];
+
   final List<String> torsos = [
     'assets/Torsos/Body10.png',
     'assets/Torsos/Body20.png',
   ];
+
   final List<String> legs = [
     'assets/Legs/Feet10.png',
     'assets/Legs/Feet20.png',
@@ -85,25 +90,19 @@ class _RoostState extends State<Roost> {
   final MessageService _messageService = MessageService();
 
   Future<void> _loadRandomEligibleMessage() async {
-    // Check rate limit
     final canRequest = await _roostService.canRequestNewPigeon();
     if (!canRequest) {
-      // Clear current pigeon but show ratelimit message
-      if (mounted) {
-        setState(() {
-          loadedMessage = null;
-          loadedHead = null;
-          loadedBody = null;
-          loadedLegs = null;
-          loadedHealth = null;
-          loadedHops = null;
-          loadedOriginRoostId = null;
-          loadedMessageId = null;
-        });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('No pigeons in roost.')));
-      }
+      setState(() {
+        loadedMessage = null;
+        loadedHead = null;
+        loadedBody = null;
+        loadedLegs = null;
+        loadedHealth = null;
+        loadedHops = null;
+        loadedOriginRoostId = null;
+        loadedMessageId = null;
+        loadedColor = null;
+      });
       return;
     }
 
@@ -117,230 +116,199 @@ class _RoostState extends State<Roost> {
       loadedHops = null;
       loadedOriginRoostId = null;
       loadedMessageId = null;
+      loadedColor = null;
+    });
+
+    final roostId = await _roostService.getRoostId();
+
+    final trackedSnapshot = await FirebaseFirestore.instance
+        .collection('tracked_pigeons')
+        .where('tracked_by_roost_id', isEqualTo: roostId)
+        .where('message_id', isEqualTo: loadedMessageId)
+        .get();
+
+    setState(() {
+      isTracked = trackedSnapshot.docs.isNotEmpty;
     });
 
     widget.deviceId = await _roostService.getRoostId();
 
-    print('R1: load pressed');
-    print('R2: current deviceId = ${widget.deviceId}');
+    final snapshot =
+        await FirebaseFirestore.instance.collection('messages').get();
 
-    try {
-      final messagesSnapshot = await FirebaseFirestore.instance
-          .collection('messages')
-          .get()
-          .timeout(const Duration(seconds: 10));
+    final docs = snapshot.docs;
+    docs.shuffle(Random());
 
-      print('R3: fetched messages');
+    QueryDocumentSnapshot<Map<String, dynamic>>? selectedDoc;
 
-      if (messagesSnapshot.docs.isEmpty) {
-        setState(() {
-          loadedMessage = 'No messages found.';
-        });
-        return;
-      }
+    String? selectedOrigin;
 
-      final docs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(
-        messagesSnapshot.docs,
-      );
+    for (final doc in docs) {
+      final data = doc.data();
+      final origin = (data['origin_roost_id'] ?? '').toString();
 
-      docs.shuffle(Random());
+      if (origin.isEmpty || origin == widget.deviceId) continue;
 
-      QueryDocumentSnapshot<Map<String, dynamic>>? selectedDoc;
-      String? selectedOriginRoostId;
-
-      for (final doc in docs) {
-        final data = doc.data();
-
-        final String originRoostId = (data['origin_roost_id'] ?? '')
-            .toString()
-            .trim();
-
-        print('R4: checking doc ${doc.id}');
-        print('R5: original_roost_id = $originRoostId');
-
-        // Skip if missing/empty
-        if (originRoostId.isEmpty) {
-          print('R6: skipped - original_roost_id missing');
-          continue;
-        }
-
-        // Skip if same device
-        if (originRoostId == widget.deviceId) {
-          print('R7: skipped - original_roost_id matches current device');
-          continue;
-        }
-
-        // Skip if this source -> destination route already exists
-        final travelLogSnapshot = await FirebaseFirestore.instance
-            .collection('travel_logs')
-            .where('message_id', isEqualTo: doc.id)
-            .where('destination_roost_id', isEqualTo: widget.deviceId)
-            .limit(1)
-            .get()
-            .timeout(const Duration(seconds: 10));
-
-        final bool messageAlreadySeenByThisDevice =
-            travelLogSnapshot.docs.isNotEmpty;
-
-        print(
-          'R8: messageAlreadySeenByThisDevice = $messageAlreadySeenByThisDevice',
-        );
-
-        if (messageAlreadySeenByThisDevice) {
-          print('R9: skipped - this device already saw this message');
-          continue;
-        }
-
-        selectedDoc = doc;
-        selectedOriginRoostId = originRoostId;
-        print('R10: selected doc ${doc.id}');
-        break;
-      }
-
-      if (selectedDoc == null || selectedOriginRoostId == null) {
-        setState(() {
-          loadedMessage = 'No eligible messages found.';
-          loadedHead = null;
-          loadedBody = null;
-          loadedLegs = null;
-          loadedHealth = null;
-          loadedHops = null;
-          loadedOriginRoostId = null;
-          loadedMessageId = null;
-        });
-        return;
-      }
-
-      final selectedData = selectedDoc.data();
-
-      setState(() {
-        loadedMessage = (selectedData['message'] ?? 'Message was empty.')
-            .toString();
-
-        loadedHead = (selectedData['head'] ?? '').toString();
-        loadedBody = (selectedData['body'] ?? '').toString();
-        loadedLegs = (selectedData['legs'] ?? '').toString();
-        loadedHealth =
-            int.tryParse((selectedData['health'] ?? '0').toString()) ?? 10;
-        loadedHops =
-            int.tryParse((selectedData['hops'] ?? '0').toString()) ?? 0;
-        loadedOriginRoostId = (selectedData['origin_roost_id'] ?? '')
-            .toString();
-        loadedMessageId = selectedDoc?.id;
-      });
-
-      await FirebaseFirestore.instance
+      final travelLogSnapshot = await FirebaseFirestore.instance
           .collection('travel_logs')
-          .add({
-            'message_id': selectedDoc.id,
-            'source_roost_id': selectedOriginRoostId,
-            'destination_roost_id': widget.deviceId,
-            'delivered_at': FieldValue.serverTimestamp(),
-          })
-          .timeout(const Duration(seconds: 10));
+          .where('message_id', isEqualTo: doc.id)
+          .where('destination_roost_id', isEqualTo: widget.deviceId)
+          .limit(1)
+          .get();
 
-      // Record that a pigeon was requested
-      await _roostService.recordPigeonRequest();
+      if (travelLogSnapshot.docs.isNotEmpty) continue;
 
-      print('R11: travel log written for ${selectedDoc.id}');
-    } catch (e) {
-      print('ROOST ERROR: $e');
+      selectedDoc = doc;
+      selectedOrigin = origin;
+      break;
+    }
 
-      setState(() {
-        loadedMessage = 'Error loading message: $e';
-        loadedHead = null;
-        loadedBody = null;
-        loadedLegs = null;
-        loadedHealth = null;
-        loadedHops = null;
-        loadedOriginRoostId = null;
-        loadedMessageId = null;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+    if (selectedDoc == null) return;
 
-      print('R12: finally hit');
+    final data = selectedDoc.data();
+
+    setState(() {
+      loadedMessage = data['message'];
+      loadedHead = data['head'].toString();
+      loadedBody = data['body'].toString();
+      loadedLegs = data['legs'].toString();
+      loadedHealth = data['health'] ?? 10;
+      loadedHops = data['hops'] ?? 0;
+      loadedMessageId = selectedDoc!.id;
+      loadedColor = data['color'] ?? 0xFF808080;
+    });
+
+    await FirebaseFirestore.instance.collection('travel_logs').add({
+      'message_id': selectedDoc.id,
+      'source_roost_id': selectedOrigin,
+      'destination_roost_id': widget.deviceId,
+      'delivered_at': FieldValue.serverTimestamp(),
+    });
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  Future<void> _untrackPigeon() async {
+    if (loadedMessageId == null) return;
+
+    final roostId = await _roostService.getRoostId();
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('tracked_pigeons')
+        .where('roost_id', isEqualTo: roostId)
+        .where('message_id', isEqualTo: loadedMessageId)
+        .get();
+
+    for (var doc in snapshot.docs) {
+      await doc.reference.delete();
     }
   }
 
-  Future<void> _feedPigeon() async {
-    if (loadedMessageId == null || loadedHealth == null || loadedHops == null)
-      return;
+  Future<void> _trackPigeon() async {
+    if (loadedMessageId == null) return;
 
-    setState(() {
-      loadedHealth = loadedHealth! + 3;
-      loadedHops = loadedHops! + 1;
+    final roostId = await _roostService.getRoostId();
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('tracked_pigeons')
+        .where('tracked_by_roost_id', isEqualTo: roostId)
+        .get();
+
+    if (snapshot.docs.length >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You can only track 5 pigeons')),
+      );
+      return;
+    }
+
+    final alreadyTracked = snapshot.docs.any(
+      (doc) => doc['message_id'] == loadedMessageId,
+    );
+
+    if (alreadyTracked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Already tracking this pigeon')),
+      );
+      return;
+    }
+
+    await FirebaseFirestore.instance.collection('tracked_pigeons').add({
+      'message_id': loadedMessageId,
+      'tracked_by_roost_id': roostId,
+      'tracked_at': FieldValue.serverTimestamp(),
     });
 
-    try {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Pigeon tracked')),
+    );
+  }
+
+  Future<void> _shooPigeon() async {
+    if (loadedMessageId == null) return;
+
+    final newHealth = ((loadedHealth ?? 10) - 3);
+    final newHops = (loadedHops ?? 0) + 1;
+
+    if (newHealth <= 0) {
+      await _messageService.deleteMessage(loadedMessageId!);
+    } else {
       await _messageService.updateMessage(
         loadedMessageId!,
-        loadedHealth!,
-        loadedHops!,
+        newHealth.clamp(0, 30),
+        newHops,
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pigeon fed! It gained health and a hop.'),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error feeding pigeon: $e')));
     }
 
     await _loadRandomEligibleMessage();
   }
 
-  Future<void> _harmPigeon() async {
-    if (loadedMessageId == null || loadedHealth == null) return;
+
+  Future<void> _feedPigeon() async {
+    if (loadedMessageId == null) return;
+
+    final newHealth = ((loadedHealth ?? 10) + 3).clamp(0, 30);
+    final newHops = (loadedHops ?? 0) + 1;
 
     setState(() {
-      loadedHealth = (loadedHealth! - 6).clamp(0, 30);
-      loadedHops = loadedHops! + 1;
+      loadedHealth = newHealth;
+      loadedHops = newHops;
     });
 
-    try {
-      if (loadedHealth! <= 0) {
-        await _messageService.deleteMessage(loadedMessageId!);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Pigeon died! It's gone now.")),
-        );
+    await Future.delayed(const Duration(seconds: 2));
 
-        await _loadRandomEligibleMessage();
-      } else {
-        await _messageService.updateMessage(
-          loadedMessageId!,
-          loadedHealth!,
-          loadedHops ?? 0,
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pigeon harmed! It lost health.')),
-        );
+    await _messageService.updateMessage(
+      loadedMessageId!,
+      newHealth,
+      newHops,
+    );
 
-        await _loadRandomEligibleMessage();
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error harming pigeon: $e')));
-    }
+    await _loadRandomEligibleMessage();
   }
 
-  Future<void> _shooPigeon() async {
+  Future<void> _harmPigeon() async {
+    if (loadedMessageId == null) return;
+
+    final newHealth = ((loadedHealth ?? 10) - 6);
+    final newHops = (loadedHops ?? 0) + 1;
+
     setState(() {
-      loadedHealth = (loadedHealth! - 3).clamp(0, 30);
-      loadedHops = loadedHops! + 1;
+      loadedHealth = newHealth.clamp(0, 30);
+      loadedHops = newHops;
     });
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (newHealth <= 0) {
+      await _messageService.deleteMessage(loadedMessageId!);
+    } else {
+      await _messageService.updateMessage(
+        loadedMessageId!,
+        newHealth,
+        newHops,
+      );
+    }
 
     await _loadRandomEligibleMessage();
   }
@@ -348,213 +316,195 @@ class _RoostState extends State<Roost> {
   Future<void> _reportContent() async {
     if (loadedMessageId == null) return;
 
-    try {
-      final roostId = await _roostService.getRoostId();
+    final roostId = await _roostService.getRoostId();
 
-      await _messageService.reportMessage(
-        messageId: loadedMessageId!,
-        reportedByRoostId: roostId,
-      );
+    await _messageService.reportMessage(
+      messageId: loadedMessageId!,
+      reportedByRoostId: roostId,
+    );
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Message reported for review.')),
-      );
-
-      setState(() {
-        loadedMessage = 'Message reported and moved for review.';
-        loadedHead = null;
-        loadedBody = null;
-        loadedLegs = null;
-        loadedHealth = null;
-        loadedHops = null;
-        loadedOriginRoostId = null;
-        loadedMessageId = null;
-      });
-
-      await _loadRandomEligibleMessage();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error reporting message: $e')));
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Message reported')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    int? headIdx = loadedHead != null
-        ? int.tryParse(loadedHead!)?.clamp(0, heads.length - 1)
-        : null;
-    int? bodyIdx = loadedBody != null
-        ? int.tryParse(loadedBody!)?.clamp(0, torsos.length - 1)
-        : null;
-    int? legsIdx = loadedLegs != null
-        ? int.tryParse(loadedLegs!)?.clamp(0, legs.length - 1)
-        : null;
-    int? healthIdx = loadedHealth != null
-        ? (loadedHealth! - 1).clamp(0, hearts.length - 1)
-        : null;
+    int? headIdx = int.tryParse(loadedHead ?? '');
+    int? bodyIdx = int.tryParse(loadedBody ?? '');
+    int? legsIdx = int.tryParse(loadedLegs ?? '');
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Roost')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'Hops: ${loadedHops}',
-                style: const TextStyle(fontSize: 20),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
+    int? healthIdx =
+        loadedHealth != null ? (loadedHealth! - 1).clamp(0, hearts.length - 1) : null;
 
-              SizedBox(
-                width: double.infinity,
-                height: 240,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if (bodyIdx == null)
-                      Image.asset('assets/misc/nest.png', height: 240)
-                    else
-                      PigeonWidget(
-                        head: headIdx ?? 0,
-                        body: bodyIdx ?? 0,
-                        legs: legsIdx ?? 0,
-                        scale: 1.0,
-                      ),
+    return AppLayout(
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (loadedBody != null)
+                  Text('Hops: ${loadedHops ?? 0}'),
 
-                    Positioned(
-                      left: 340,
-                      child: Row(
-                        children: [
-                          // REPORT
-                          if (loadedMessageId != null)
-                            GestureDetector(
-                              onTap: _reportContent,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Report',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Icon(
-                                    Icons.flag,
-                                    size: 40,
-                                    color: Colors.orange,
-                                  ),
-                                ],
-                              ),
-                            ),
+                const SizedBox(height: 20),
 
-                          const SizedBox(width: 30),
+                SizedBox(
+                  height: 240,
+                  width: double.infinity,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (bodyIdx == null)
+                        Image.asset('assets/misc/nest.png', height: 240)
+                      else
+                        PigeonWidget(
+                          head: headIdx ?? 0,
+                          body: bodyIdx ?? 0,
+                          legs: legsIdx ?? 0,
+                          color: loadedColor ?? 0xFF808080,
+                        ),
 
-                          // HARM
-                          if (loadedMessageId != null)
-                            GestureDetector(
-                              onTap: _harmPigeon,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Harm',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Image.asset(
-                                    'assets/Backgrounds/Rocks.png',
-                                    width: 60,
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    if (loadedMessageId != null)
                       Positioned(
-                        right: 400,
-                        child: GestureDetector(
-                          onTap: _feedPigeon,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                'Feed',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 6),
-                              Image.asset(
-                                'assets/Backgrounds/Feed.png',
-                                width: 60,
-                              ),
-                            ],
-                          ),
+                        left: 0,
+                        right: 0,
+                        top: 90,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+
+                            Row(
+                              children: [
+                                if (loadedBody != null) ...[
+                                  GestureDetector(
+                                    onTap: (loadedMessageId == null) ? null : _reportContent,
+                                    child: Column(
+                                      children: [
+                                        const Text('Report', style: TextStyle(color: Colors.orange)),
+                                        const SizedBox(height: 6),
+                                        const Icon(Icons.flag, size: 36, color: Colors.orange),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 10),
+
+                                  GestureDetector(
+                                    onTap: (loadedMessageId == null) ? null : _harmPigeon,
+                                    child: Column(
+                                      children: [
+                                        const Text('Harm'),
+                                        const SizedBox(height: 6),
+                                        Image.asset('assets/Backgrounds/Rocks.png', width: 52),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+
+                            Row(
+                              children: [
+                                if (loadedBody != null) ...[
+                                  GestureDetector(
+                                    onTap: (loadedMessageId == null) ? null : _feedPigeon,
+                                    child: Column(
+                                      children: [
+                                        const Text('Feed'),
+                                        const SizedBox(height: 6),
+                                        Image.asset('assets/Backgrounds/Feed.png', width: 52),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 10),
+
+                                  Column(
+                                    children: [
+                                      const Text('Track'),
+                                      Switch(
+                                        value: isTracked,
+                                        onChanged: (value) async {
+                                          if (loadedMessageId == null) return;
+
+                                          if (value) {
+                                            await _trackPigeon();
+                                          } else {
+                                            await _untrackPigeon();
+                                          }
+
+                                          setState(() {
+                                            isTracked = value;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 10),
-
-              if (loadedHealth != null && healthIdx != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Image.asset(hearts[healthIdx], width: 200),
+                    ],
+                  ),
                 ),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: 10),
 
-              Container(
-                padding: const EdgeInsets.all(12),
+                if (healthIdx != null)
+                  Image.asset(hearts[healthIdx], width: 200),
+
+                const SizedBox(height: 20),
+
+                if (loadedBody != null)
+                  ElevatedButton(
+                    onPressed: (loadedMessageId == null) ? null : _shooPigeon,
+                    child: const Text('Shoo'),
+                  ),
+
+                const SizedBox(height: 20),
+
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 2),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                  ),
+                  child: Text(
+                    loadedMessage ?? 'No pigeons currently in roost.',
+                    style: const TextStyle(fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Positioned(
+            top: 10,
+            left: 10,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black, width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  loadedMessage ?? 'No pigeons currently in roost.',
-                  style: const TextStyle(fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              if (loadedMessageId != null)
-                Column(
-                  children: [
-                    const SizedBox(height: 10),
-
-                    ElevatedButton(
-                      onPressed: _shooPigeon,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey,
-                      ),
-                      child: const Text(
-                        'Shoo',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
                     ),
                   ],
                 ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Go Back'),
+                child: const Icon(Icons.arrow_back, size: 20),
               ),
-            ],
+            ),
           ),
-        ),
+
+        ],
       ),
     );
   }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'recolor_image.dart';
 
 class PigeonWidget extends StatelessWidget {
   final int head;
   final int body;
   final int legs;
+  final int color;
   final double scale;
 
   const PigeonWidget({
@@ -11,6 +13,7 @@ class PigeonWidget extends StatelessWidget {
     required this.head,
     required this.body,
     required this.legs,
+    required this.color,
     this.scale = 1.0,
   });
 
@@ -34,27 +37,34 @@ class PigeonWidget extends StatelessWidget {
       'assets/Legs/Feet30.png',
     ];
 
+    final pigeonColor = Color(color);
+
     return SizedBox(
       height: 240 * scale,
       width: 220 * scale,
       child: Stack(
         children: [
           // Body
-            Positioned(
-              bottom: 9 * scale,
-              left: 0,
-              right: 0,
-              child: Image.asset(
-                torsos[body],
+          Positioned(
+            bottom: 9 * scale,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: RecolorImage(
+                assetPath: torsos[body % torsos.length],
+                color: pigeonColor,
                 height: 134 * scale,
               ),
             ),
+          ),
+
           // Head
           Positioned(
             top: 6 * scale,
             left: 90 * scale,
-            child: Image.asset(
-              heads[head],
+            child: RecolorImage(
+              assetPath: heads[head % heads.length],
+              color: pigeonColor,
               height: 102 * scale,
             ),
           ),
@@ -65,8 +75,9 @@ class PigeonWidget extends StatelessWidget {
             left: 0,
             right: 0.6 * scale,
             child: Center(
-              child: Image.asset(
-                legsList[legs],
+              child: RecolorImage(
+                assetPath: legsList[legs % legsList.length],
+                color: pigeonColor,
                 height: 50 * scale,
               ),
             ),
