@@ -3,6 +3,8 @@ import 'services/message_service.dart';
 import 'services/roost_service.dart';
 import 'models/message.dart';
 import 'package:confetti/confetti.dart';
+import 'widgets/recolor_image.dart';
+import 'widgets/app_layout.dart';
 
 class CreatePigeon extends StatefulWidget {
   const CreatePigeon({super.key});
@@ -15,6 +17,9 @@ class _CreatePigeonState extends State<CreatePigeon> {
   final TextEditingController _messageController = TextEditingController();
   final MessageService _messageService = MessageService();
   final RoostService _roostService = RoostService.getInstance();
+
+  final ScrollController _scrollController = ScrollController();
+
   bool _isSending = false;
   bool _trackThisPigeon = false;
 
@@ -22,53 +27,64 @@ class _CreatePigeonState extends State<CreatePigeon> {
   int _torsoIndex = 0;
   int _legsIndex = 0;
 
+
+  Color _pigeonColor = Colors.grey;
+
   late ConfettiController _confettiController;
 
-  final List<String> heads = ['assets/heads/Head10.png','assets/heads/Head20.png','assets/heads/Head30.png','assets/heads/Head40.png'];
-  final List<String> torsos = ['assets/Torsos/Body10.png','assets/Torsos/Body20.png'];
-  final List<String> legs = ['assets/Legs/Feet10.png', 'assets/Legs/Feet20.png', 'assets/Legs/Feet30.png'];
+  final List<String> heads = [
+    'assets/heads/Head10.png',
+    'assets/heads/Head20.png',
+    'assets/heads/Head30.png',
+    'assets/heads/Head40.png'
+  ];
+
+  final List<String> torsos = [
+    'assets/Torsos/Body10.png',
+    'assets/Torsos/Body20.png'
+  ];
+
+  final List<String> legs = [
+    'assets/Legs/Feet10.png',
+    'assets/Legs/Feet20.png',
+    'assets/Legs/Feet30.png'
+  ];
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 1),
-    );
+
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 1));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {});
+    });
+
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _confettiController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _sendMessage() async {
     final messageText = _messageController.text.trim();
 
     if (messageText.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter a message')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a message')),
+      );
       return;
     }
 
-    setState(() {
-      _isSending = true;
-    });
+    setState(() => _isSending = true);
 
     try {
-      // get the roost ID from local storage
       final roostId = await _roostService.getRoostId();
-
-      if (_trackThisPigeon) {
-        final trackedCount = await _messageService.getTrackedCount(roostId);
-        if (trackedCount >= 3) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('You already have 3 tracked pigeons. Untrack one on the home page first.'),
-            ),
-          );
-          setState(() {
-            _isSending = false;
-          });
-          return;
-        }
-      }
 
       final message = Message.create(
         body: _torsoIndex,
@@ -76,46 +92,28 @@ class _CreatePigeonState extends State<CreatePigeon> {
         legs: _legsIndex,
         message: messageText,
         originRoostId: roostId,
+        color: _pigeonColor.value,
       );
 
-      final messageId = await _messageService.saveMessage(message);
-      if (_trackThisPigeon) {
-        await _messageService.trackMessage(
-          messageId: messageId,
-          trackedByRoostId: roostId,
-        );
-      }
-
-
-      if (!mounted) return;
+      await _messageService.saveMessage(message);
 
       _confettiController.play();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pigeon released into the world!')),
-      );
-
-      // it would be cool to have a little animation play or something
-
-      // clear
       _messageController.clear();
+
       setState(() {
         _headIndex = 0;
         _torsoIndex = 0;
         _legsIndex = 0;
         _trackThisPigeon = false;
+        _pigeonColor = Colors.grey; // 🔥 reset color (optional)
       });
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to send pigeon: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSending = false;
-        });
-      }
+      setState(() => _isSending = false);
     }
   }
 
@@ -134,14 +132,12 @@ class _CreatePigeonState extends State<CreatePigeon> {
             IconButton(
               icon: const Icon(Icons.arrow_left),
               onPressed: () {
-                int newIndex = (currentIndex - 1 + items.length) % items.length;
+                int newIndex =
+                    (currentIndex - 1 + items.length) % items.length;
                 onChanged(newIndex);
               },
             ),
-            Image.asset(items[currentIndex], width: 100, height: 100, errorBuilder: (context, error, stackTrace) {
-            return const Icon(Icons.error);
-            },
-            ),
+            Image.asset(items[currentIndex], width: 100, height: 100),
             IconButton(
               icon: const Icon(Icons.arrow_right),
               onPressed: () {
@@ -155,69 +151,51 @@ class _CreatePigeonState extends State<CreatePigeon> {
     );
   }
 
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _confettiController.dispose();
-    super.dispose();
+  Widget _colorPicker(Color current, Function(Color) onSelected) {
+    final colors = [
+      Colors.grey,
+      const Color.fromARGB(255, 141, 182, 216),
+      const Color.fromARGB(255, 121, 185, 123),
+      const Color.fromARGB(255, 149, 85, 80),
+      const Color.fromARGB(255, 143, 90, 152),
+      const Color.fromARGB(255, 99, 75, 40),
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: colors.map((c) {
+        return GestureDetector(
+          onTap: () => onSelected(c),
+          child: Container(
+            margin: const EdgeInsets.all(4),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: c,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: current == c ? Colors.black : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create and Customize Your Pigeon Here!'),
-      ),
-      body: Stack(
+    return AppLayout(
+      child: Stack(
         children: [
-          SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+
+          Padding(
+            padding: const EdgeInsets.only(top: 360),
+            child: SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 children: [
-                  const Text('Preview', style: TextStyle(fontSize: 20)),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 325,
-                    child: Stack(
-                      children: [
-                        // Torso (center anchor)
-                        Center(
-                          child: Image.asset(
-                            torsos[_torsoIndex],
-                            height: 134,
-                          ),
-                        ),
-
-                        // Head (move up)
-                        Positioned(
-                          top: 5,
-                          left: 82.4,
-                          right: 0,
-                          child: Center(
-                            child: Image.asset(
-                              heads[_headIndex],
-                              height: 102,
-                            ),
-                          ),
-                        ),
-
-                        // Legs (move down)
-                        Positioned(
-                          bottom: 86.3,
-                          left: 0,
-                          right: .6,
-                          child: Center(
-                            child: Image.asset(
-                              legs[_legsIndex],
-                              height: 50,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 15),
                   piecesSelector(
                     label: 'Head',
                     items: heads,
@@ -236,53 +214,120 @@ class _CreatePigeonState extends State<CreatePigeon> {
                     currentIndex: _legsIndex,
                     onChanged: (i) => setState(() => _legsIndex = i),
                   ),
+
                   const SizedBox(height: 20),
+                  const Text('Pigeon Color'),
+
+                  _colorPicker(
+                    _pigeonColor,
+                    (c) => setState(() => _pigeonColor = c),
+                  ),
+
+                  const SizedBox(height: 20),
+
                   TextField(
                     controller: _messageController,
                     maxLines: 4,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText: 'Message for your pigeon',
-                      hintText: 'What should your pigeon say?',
+                      labelText: 'Message',
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: const Text('Track this pigeon'),
-                    subtitle: const Text('Tracked pigeons appear on the home page'),
-                    value: _trackThisPigeon,
-                    onChanged: (value) {
-                      setState(() {
-                        _trackThisPigeon = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
+
                   ElevatedButton(
                     onPressed: _isSending ? null : _sendMessage,
-                    child: Text(_isSending ? 'Releasing...' : 'Release Pigeon'),
+                    child: Text(
+                        _isSending ? 'Releasing...' : 'Release Pigeon'),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Go Back'),
-                  ),
+
+                  const SizedBox(height: 50),
                 ],
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirection: 1.5708,
-              emissionFrequency: 0.05,
-              numberOfParticles: 25,
-              maxBlastForce: 20,
-              minBlastForce: 8,
-              gravity: 0.3,
+
+          Positioned(
+            top: 20,
+            left: 0,
+            right: 0,
+            child: AbsorbPointer(
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Create Pigeon',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  SizedBox(
+                    height: 325,
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: RecolorImage(
+                            key: ValueKey(torsos[_torsoIndex]),
+                            assetPath: torsos[_torsoIndex],
+                            color: _pigeonColor,
+                            height: 134,
+                          ),
+                        ),
+                        Positioned(
+                          top: 5,
+                          left: 82.4,
+                          right: 0,
+                          child: Center(
+                            child: RecolorImage(
+                              key: ValueKey(heads[_headIndex]),
+                              assetPath: heads[_headIndex],
+                              color: _pigeonColor,
+                              height: 102,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 86.3,
+                          left: 0,
+                          right: .6,
+                          child: Center(
+                            child: RecolorImage(
+                              key: ValueKey(legs[_legsIndex]),
+                              assetPath: legs[_legsIndex],
+                              color: _pigeonColor,
+                              height: 50,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+          ),
+          
+          Positioned(
+            top: 10,
+            left: 10,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.arrow_back, size: 20),
+              ),
             ),
           ),
         ],
